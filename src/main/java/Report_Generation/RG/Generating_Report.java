@@ -97,6 +97,8 @@ public class Generating_Report {
 	private static Map<String, XSSFChart> chartMap = new HashMap<>();
 	private static boolean islastSet=false;
 	private static String excelPath="";
+	private static String BTest_Name="";
+	private static String folderFilePath="";
 	
 	public static void adjusting_data(String excelFilePath) { 
 		try {
@@ -630,9 +632,40 @@ public class Generating_Report {
 		}
 	}
 	public static void createReports() {
+		String folderName = BTest_Name;
+
+	    // Get the path to the desktop
+//	    String userHome = System.getProperty("user.home");
+//	    Path desktopPath = Paths.get(userHome, "Desktop");
+//
+//	    // Create the new folder path
+//	    Path newFolderPath = desktopPath.resolve(folderName);
 		
-		for(int i=0;i<10;i++) {
+		String oneDrivePath = System.getenv("OneDrive");
+	    if (oneDrivePath == null || oneDrivePath.isEmpty()) {
+	        throw new IllegalStateException("OneDrive path is not set");
+	    }
+	    
+	    Path desktopPath = Paths.get(oneDrivePath, "Desktop");
+
+	    // Create the new folder path
+	    Path newFolderPath = desktopPath.resolve(folderName);
+
+	    try {
+	        // Create the folder if it doesn't exist
+	        if (!Files.exists(newFolderPath)) {
+	            Files.createDirectory(newFolderPath);
+	        }
+	        System.out.println("Folder created at: " + newFolderPath.toString());
+	        folderFilePath=newFolderPath.toString();
+	    } catch (IOException e) {
+	        e.printStackTrace();
+	    }
+	   // int total=finalOutput.size();
+	    int total=10;
+		for(int i=0;i<total;i++) {
 			populateTrialData(excelPath, i);
+			App.updateProgress(i+1 + "/" + total);
 		}
 	}
 	
@@ -645,6 +678,10 @@ public class Generating_Report {
 			//XSSFSheet outputsheet = workbook.createSheet((String)currdata.get("student_roll_no")); 
 			//XSSFSheet outputsheet=workbook.getSheet("Trial");
 			XSSFSheet outputsheet= workbook.getSheet("Btest Report");
+			if(outputsheet!=null && !islastSet) {
+				workbook.removeSheetAt(workbook.getSheetIndex(outputsheet));
+				outputsheet=null;
+			}
 			if(outputsheet==null)outputsheet=workbook.createSheet("Btest Report");
 			int sheetIndex = workbook.getSheetIndex(outputsheet);
 			//setBordersToWhite(outputsheet);
@@ -711,6 +748,7 @@ public class Generating_Report {
 
 			
 			String btest_name = (String) BTest_data.get("test_name");
+			BTest_Name=btest_name;
 //            String timestamp = (String) BTest_data.get("time_stamp");
 //            DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss 'GMT'");
 //            DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -930,7 +968,7 @@ public class Generating_Report {
                 	 //System.out.println("if statement works");
                      org.openxmlformats.schemas.drawingml.x2006.spreadsheetDrawing.CTPicture pic = anchor.getPic();
                      String imageName = getImageName(pic);
-					System.out.println(imageName);
+					//System.out.println(imageName);
                      if (imageName.contains("Picture")) {
                          anchor.unsetPic(); // Remove the picture
                      }
@@ -955,7 +993,7 @@ public class Generating_Report {
                  DefaultCategoryDataset dataset = datasetMap.get(qTypeName);
 
                  JFreeChart chart = ChartFactory.createStackedBarChart(
-                         qTypeName + " Type Questions Report",
+                         qTypeName + " Report",
                          "Subjects",
                          "Percentage (%)",
                          dataset,
@@ -1238,12 +1276,11 @@ public class Generating_Report {
              }
               
              //printSetup.setScale((short) 80);
-             if(!islastSet)workbook.setSheetHidden(sheetIndex, false);
-             workbook.setSheetHidden(sheetIndex, false);
+             //if(!islastSet)workbook.setSheetHidden(sheetIndex, false);
+             workbook.setActiveSheet(sheetIndex);
+             //workbook.setSheetHidden(sheetIndex, false);
              if(islastSet) {
              for (Sheet sheet : workbook) {
-//            	 System.out.println(sheet.getSheetName());
-//            	 System.out.println(workbook.getSheetIndex(sheet));
                  if (!(sheet.getSheetName().equals("Btest Report"))) {
                 	 //System.out.println(sheet.getSheetName());
                      workbook.setSheetHidden(workbook.getSheetIndex(sheet), true);
@@ -1260,7 +1297,7 @@ public class Generating_Report {
 //            	 }
              }
              
-             String pdfFilePath="C:\\Users\\adity\\Downloads\\" + currdata.get("student_roll_no") + ".pdf";
+            String pdfFilePath=folderFilePath + "\\" + currdata.get("student_roll_no") + ".pdf";
 			FileOutputStream fileOut = new FileOutputStream(excelFilePath);
 			workbook.write(fileOut);
 			fileOut.close();
@@ -1597,7 +1634,7 @@ public class Generating_Report {
             int exitCode = process.waitFor(); // Wait for the process to complete
 
             if (exitCode == 0) {
-                System.out.println("LibreOffice conversion successful");
+                //System.out.println("LibreOffice conversion successful");
 
                 // LibreOffice generates a PDF with the same name as the Excel file in the same directory
                 String generatedPdfPath = excelFilePath.replace(".xlsx", ".pdf");
