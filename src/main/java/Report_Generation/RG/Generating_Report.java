@@ -12,6 +12,8 @@ import org.jfree.chart.renderer.category.StackedBarRenderer;
 import org.jfree.data.category.DefaultCategoryDataset;
 import org.jfree.ui.RefineryUtilities;
 import org.openxmlformats.schemas.drawingml.x2006.chart.CTPlotArea;
+import org.openxmlformats.schemas.drawingml.x2006.main.CTBlip;
+import org.openxmlformats.schemas.drawingml.x2006.main.CTBlipFillProperties;
 import org.openxmlformats.schemas.drawingml.x2006.picture.CTPicture;
 import org.openxmlformats.schemas.drawingml.x2006.spreadsheetDrawing.CTDrawing;
 import org.openxmlformats.schemas.drawingml.x2006.spreadsheetDrawing.CTTwoCellAnchor;
@@ -44,6 +46,10 @@ import java.util.stream.Collectors;
 import javax.xml.namespace.QName;
 
 import org.apache.commons.math3.analysis.function.Max;
+import org.apache.poi.ooxml.POIXMLDocumentPart;
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+import org.apache.poi.openxml4j.opc.OPCPackage;
+import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.util.IOUtils;
@@ -71,6 +77,7 @@ import org.apache.poi.xssf.usermodel.XSSFSimpleShape;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.xmlbeans.XmlCursor;
 import org.apache.xmlbeans.XmlObject;
+import org.apache.xmlbeans.XmlOptions;
 import org.apache.xmlbeans.impl.common.XmlStreamUtils;
 import org.checkerframework.checker.units.qual.min;
 
@@ -661,8 +668,8 @@ public class Generating_Report {
 	    } catch (IOException e) {
 	        e.printStackTrace();
 	    }
-	   // int total=finalOutput.size();
-	    int total=10;
+	    int total=finalOutput.size();
+	    //int total=10;
 		for(int i=0;i<total;i++) {
 			populateTrialData(excelPath, i);
 			App.updateProgress(i+1 + "/" + total);
@@ -707,7 +714,12 @@ public class Generating_Report {
 //	        Row firstRow=outputsheet.getRow(0);
 //	        firstRow.setHeight((short) (3*(1440/2.54f)));
 	        if(!islastSet) {
-	        outputsheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 9));
+	        	CellRangeAddress newMergedRegion = new CellRangeAddress(0, 0, 0, 9);
+	        	if (!isRangeAlreadyMerged(outputsheet, newMergedRegion)) {
+	                // Add the merged region if it is not already merged
+	                outputsheet.addMergedRegion(newMergedRegion);
+	            }
+	       // outputsheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 9));
 	        Row row = outputsheet.createRow(0);
 	        row.setHeight((short) (1.75*(1440/2.54f)));
 	        Cell cell = row.createCell(0);
@@ -743,7 +755,7 @@ public class Generating_Report {
 	        }
 	        
 	        }
-
+	        System.out.println("not the heading problem");
 	        int pageStartRow=0;
 
 			
@@ -922,70 +934,26 @@ public class Generating_Report {
 
                  }
              }
-            // System.out.println(datasetMap);
-//             for (String qTypeName : datasetMap.keySet()) {
-//            	    DefaultCategoryDataset dataset = datasetMap.get(qTypeName);
-//            	    System.out.println("Dataset for qTypeName: " + qTypeName);
-//            	    for (int i = 0; i < dataset.getRowCount(); i++) {
-//            	        Comparable rowKey = dataset.getRowKey(i);
-//            	        for (int j = 0; j < dataset.getColumnCount(); j++) {
-//            	            Comparable columnKey = dataset.getColumnKey(j);
-//            	            Number value = dataset.getValue(rowKey, columnKey);
-//            	            System.out.println("\t" + rowKey + " - " + columnKey + ": " + value);
-//            	        }
-//            	    }
-//            	}
-            // removeExistingPictures(outputsheet, start_row, start_row+40, start_col, start_col+20);
-//             XSSFDrawing prevdrawing = outputsheet.createDrawingPatriarch();
-//             CTDrawing ctDrawing = prevdrawing.getCTDrawing();
-//
-//             // Iterate through the XML elements and remove images
-//             for (XmlObject obj : ctDrawing.selectPath("./*")) {
-//                 if (obj instanceof CTPicture) {
-//                     // Optionally, perform checks or criteria to identify specific images to remove
-//                     XmlCursor cursor = obj.newCursor();
-//                     cursor.removeXml();
-//                 }
-//             }
-             //XSSFDrawing prevdrawing = outputsheet.createDrawingPatriarch();
-//             CTDrawing ctDrawing = prevdrawing.getCTDrawing();
-//
-//             // Iterate through the XML elements and remove images
-//             for (int i = 0; i < ctDrawing.sizeOfTwoCellAnchorArray(); i++) {
-//                 CTTwoCellAnchor anchor = ctDrawing.getTwoCellAnchorArray(i);
-//                 if (anchor.isSetPic()) {
-//                     anchor.unsetPic(); // Remove the picture
-//                 }
-//             }
              
-             XSSFDrawing prevDrawing = outputsheet.createDrawingPatriarch();
-             CTDrawing ctDrawing = prevDrawing.getCTDrawing();
+             Drawing prevdrawing = outputsheet.getDrawingPatriarch();
+             if (prevdrawing instanceof XSSFDrawing) {
+            	   for (XSSFShape shape : ((XSSFDrawing)prevdrawing).getShapes()) {
+            	    if (shape instanceof XSSFPicture) {
+            	     XSSFPicture xssfPicture = (XSSFPicture)shape;
+            	     String shapename = xssfPicture.getShapeName();
+            	     int row = xssfPicture.getClientAnchor().getRow1();
+            	     int col = xssfPicture.getClientAnchor().getCol1();
+            	     System.out.println("Picture " + "" + " with Shapename: " + shapename + " is located row: " + row + ", col: " + col);
 
-             // Iterate through the XML elements and remove images that are not in the imageNamesToKeep list
-             for (int i = 0; i < ctDrawing.sizeOfTwoCellAnchorArray(); i++) {
-                 CTTwoCellAnchor anchor = ctDrawing.getTwoCellAnchorArray(i);
-                 if (anchor.isSetPic()) {
-                	 //System.out.println("if statement works");
-                     org.openxmlformats.schemas.drawingml.x2006.spreadsheetDrawing.CTPicture pic = anchor.getPic();
-                     String imageName = getImageName(pic);
-					//System.out.println(imageName);
-                     if (imageName.contains("Picture")) {
-                         anchor.unsetPic(); // Remove the picture
-                     }
-                 }
-             }
-//             int imageCount = 0;
-//             int keepImageIndex = ctDrawing.sizeOfTwoCellAnchorArray() - 1; // Index of the last image
-//
-//             for (int i = 0; i < ctDrawing.sizeOfTwoCellAnchorArray(); i++) {
-//                 CTTwoCellAnchor anchor = ctDrawing.getTwoCellAnchorArray(i);
-//                 if (anchor.isSetPic()) {
-//                     if (imageCount != keepImageIndex) {
-//                         anchor.unsetPic(); // Remove the picture
-//                     }
-//                     imageCount++;
-//                 }
-//             }
+            	     if (shapename.contains("Picture")) {
+            	    	 deleteEmbeddedXSSFPicture(xssfPicture);
+            	    	 deleteCTAnchor(xssfPicture);
+            	     }
+
+            	    }
+            	   }
+            	  }
+           
 
              Map<String, JFreeChart> chartMap = new HashMap<>();
 
@@ -1244,7 +1212,7 @@ public class Generating_Report {
                  anchor_ques_type_analysis.setCol2(start_col+8);
                  anchor_ques_type_analysis.setRow2(start_row+14);
                  Picture pict_ques_type_analysis= drawing.createPicture(anchor_ques_type_analysis, pictureques_type_analysis);
-                 pict_ques_type_analysis.resize(1.2,1.2);
+                 pict_ques_type_analysis.resize(1.2,1.0);
                  ((XSSFPicture) pict_ques_type_analysis).getCTPicture().getNvPicPr().getCNvPr().setName("Ques_Type_Analysis");
                  
                  start_row+=20;
@@ -1263,7 +1231,7 @@ public class Generating_Report {
                  anchor_must_attempt_analysis.setCol2(start_col+8);
                  anchor_must_attempt_analysis.setRow2(start_row+18);
                  Picture pictmust_attempt_analysis = drawing.createPicture(anchor_must_attempt_analysis, picturemust_attempt_analysis);
-                 pictmust_attempt_analysis.resize(1.2,1.2);
+                 pictmust_attempt_analysis.resize(1.2,0.7);
                  ((XSSFPicture) pictmust_attempt_analysis).getCTPicture().getNvPicPr().getCNvPr().setName("5_Must_Attempt");
                  
                  
@@ -1286,24 +1254,15 @@ public class Generating_Report {
                      workbook.setSheetHidden(workbook.getSheetIndex(sheet), true);
                  }
              }
-//            	 boolean foundBtestReport = false;
-//            	 for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
-//            	     Sheet sheet = workbook.getSheetAt(i);
-//            	     if (sheet.getSheetName().equals("Btest Report")) {
-//            	         foundBtestReport = true;
-//            	     } else {
-//            	         workbook.setSheetHidden(i, true); // Hide all sheets except "Btest Report"
-//            	     }
-//            	 }
              }
              
             String pdfFilePath=folderFilePath + "\\" + currdata.get("student_roll_no") + ".pdf";
 			FileOutputStream fileOut = new FileOutputStream(excelFilePath);
 			workbook.write(fileOut);
 			fileOut.close();
+			file.close();
 			workbook.close();
 			if(islastSet)exportToPdf(excelFilePath, pdfFilePath);
-			//Files.deleteIfExists(Paths.get(tempExcelFilePath));
 			islastSet=true;
 		}
 		catch(Exception e)
@@ -1515,22 +1474,6 @@ public class Generating_Report {
         return style;
     }
     
-//    private static List<Double> dataSourceToList(XDDFNumericalDataSource<Double> dataSource) {
-//        Double[] values = new Double[dataSource.getPointCount()];
-//        for (int i = 0; i < dataSource.getPointCount(); i++) {
-//            values[i] = dataSource.getPointAt(i);
-//        }
-//        return Arrays.asList(values);
-//    }
-//    private static XSSFChart getExistingChart(XSSFSheet sheet, String chartTitle) {
-//        XSSFDrawing drawing = sheet.createDrawingPatriarch();
-//        for (XSSFChart chart : drawing.getCharts()) {
-//            if (chart.getTitleText().equals(chartTitle + " Type Questions Report")) {
-//                return chart;
-//            }
-//        }
-//        return null;
-//    }
     private static void mergeAndSetCellValue(Sheet sheet, int firstRow, int lastRow, int firstCol, int lastCol, String value, CellStyle style) {
     	removeExistingMergedRegions(sheet, firstRow, lastRow, firstCol, lastCol);
         // Clear the contents of the cells in the range
@@ -1586,31 +1529,47 @@ public class Generating_Report {
         return null;
     }
     
-    private static void addImageToSheet(XSSFWorkbook workbook, XSSFSheet sheet, InputStream inputStream, int col1, int row1) throws IOException {
-        byte[] bytes = IOUtils.toByteArray(inputStream);
-
-        // Add the image to the workbook
-        int pictureIdx = workbook.addPicture(bytes, Workbook.PICTURE_TYPE_JPEG);
-        System.out.println("1 step done");
-        // Create the drawing patriarch. This is the top-level container for all shapes.
-        Drawing<?> drawing = sheet.createDrawingPatriarch();
-        System.out.println("2 step done");
-        
-        // Create an anchor that specifies the position of the image in the sheet
-        CreationHelper helper = workbook.getCreationHelper();
-        ClientAnchor anchor = helper.createClientAnchor();
-        System.out.println("3 step done");
-
-        // Set the top-left corner of the image to the cell (col1, row1) and bottom-right corner
-        anchor.setCol1(col1);
-        anchor.setRow1(row1);
-        
-        // Create the picture
-        Picture pict = drawing.createPicture(anchor, pictureIdx);
-        System.out.println("4 step done");
-        // Resize the image to fit the cell
-        pict.resize();
-    }
+    public static void deleteCTAnchor(XSSFPicture xssfPicture) {
+    	  XSSFDrawing drawing = xssfPicture.getDrawing();
+    	  XmlCursor cursor = xssfPicture.getCTPicture().newCursor();
+    	  cursor.toParent();
+    	  if (cursor.getObject() instanceof org.openxmlformats.schemas.drawingml.x2006.spreadsheetDrawing.CTTwoCellAnchor) {
+    	   for (int i = 0; i < drawing.getCTDrawing().getTwoCellAnchorList().size(); i++) {
+    	    if (cursor.getObject().equals(drawing.getCTDrawing().getTwoCellAnchorArray(i))) {
+    	     drawing.getCTDrawing().removeTwoCellAnchor(i);
+    	     System.out.println("TwoCellAnchor for picture " + xssfPicture + " was deleted.");
+    	    }
+    	   }
+    	  } else if (cursor.getObject() instanceof org.openxmlformats.schemas.drawingml.x2006.spreadsheetDrawing.CTOneCellAnchor) {
+    	   for (int i = 0; i < drawing.getCTDrawing().getOneCellAnchorList().size(); i++) {
+    	    if (cursor.getObject().equals(drawing.getCTDrawing().getOneCellAnchorArray(i))) {
+    	     drawing.getCTDrawing().removeOneCellAnchor(i);
+    	     System.out.println("OneCellAnchor for picture " + xssfPicture + " was deleted.");
+    	    }
+    	   }
+    	  } else if (cursor.getObject() instanceof org.openxmlformats.schemas.drawingml.x2006.spreadsheetDrawing.CTAbsoluteAnchor) {
+    	   for (int i = 0; i < drawing.getCTDrawing().getAbsoluteAnchorList().size(); i++) {
+    	    if (cursor.getObject().equals(drawing.getCTDrawing().getAbsoluteAnchorArray(i))) {
+    	     drawing.getCTDrawing().removeAbsoluteAnchor(i);
+    	     System.out.println("AbsoluteAnchor for picture " + xssfPicture + " was deleted.");
+    	    }
+    	   }
+    	  }
+    	 }
+    
+    public static void deleteEmbeddedXSSFPicture(XSSFPicture xssfPicture) {
+    	  if (xssfPicture.getCTPicture().getBlipFill() != null) {
+    	   if (xssfPicture.getCTPicture().getBlipFill().getBlip() != null) {
+    	    if (xssfPicture.getCTPicture().getBlipFill().getBlip().getEmbed() != null) {
+    	     String rId = xssfPicture.getCTPicture().getBlipFill().getBlip().getEmbed();
+    	     XSSFDrawing drawing = xssfPicture.getDrawing();
+    	     drawing.getPackagePart().removeRelationship(rId);
+    	     drawing.getPackagePart().getPackage().deletePartRecursive(drawing.getRelationById(rId).getPackagePart().getPartName());
+    	     System.out.println("Picture " + xssfPicture + " was deleted.");
+    	    }
+    	   }
+    	  }
+    	 }
     public static void exportToPdf(String excelFilePath, String pdfFilePath) {
         try {
             // Path to LibreOffice Calc executable
@@ -1652,5 +1611,18 @@ public class Generating_Report {
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
+    }
+    
+    private static boolean isRangeAlreadyMerged(Sheet sheet, CellRangeAddress range) {
+        for (int i = 0; i < sheet.getNumMergedRegions(); i++) {
+            CellRangeAddress mergedRegion = sheet.getMergedRegion(i);
+            if (mergedRegion.getFirstRow() == range.getFirstRow()
+                    && mergedRegion.getLastRow() == range.getLastRow()
+                    && mergedRegion.getFirstColumn() == range.getFirstColumn()
+                    && mergedRegion.getLastColumn() == range.getLastColumn()) {
+                return true; // The range is already merged
+            }
+        }
+        return false; // The range is not merged
     }
 }
