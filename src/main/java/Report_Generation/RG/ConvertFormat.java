@@ -192,15 +192,9 @@ public class ConvertFormat{
 //	        PopulateSheet.populateSheet(workbook, "Student_Marks",student_marks_arr_1 , excelFilePath, test_code);
 //	        PopulateSheet.populateSheet(workbook, "Student_Info",student_info_arr , excelFilePath, test_code);
 //	        PopulateSheet.populateSheet(workbook, "Question_Info",q_info_arr , excelFilePath, test_code);
-	        try {
-                if (workbook != null) {
-                    workbook.close();
-                    file.close();
-                    
-                }
-            } catch (IOException ex) {
-                ex.printStackTrace();
-            }
+	        
+	        file.close();
+	        workbook.close();
 			
 		} catch (Exception e) {
 			e.printStackTrace();

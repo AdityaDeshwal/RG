@@ -1,6 +1,7 @@
 package Report_Generation.RG;
 
 import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
 import java.awt.Color;
 import java.io.File;
 import org.jfree.chart.ChartFactory;
@@ -17,6 +18,7 @@ import org.openxmlformats.schemas.drawingml.x2006.main.CTBlipFillProperties;
 import org.openxmlformats.schemas.drawingml.x2006.picture.CTPicture;
 import org.openxmlformats.schemas.drawingml.x2006.spreadsheetDrawing.CTDrawing;
 import org.openxmlformats.schemas.drawingml.x2006.spreadsheetDrawing.CTTwoCellAnchor;
+import org.openxmlformats.schemas.spreadsheetml.x2006.main.impl.WorkbookDocumentImpl;
 
 import com.fasterxml.jackson.databind.ser.std.StdKeySerializers.Default;
 import com.graphbuilder.math.func.LnFunction;
@@ -50,6 +52,7 @@ import org.apache.poi.ooxml.POIXMLDocumentPart;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.openxml4j.opc.PackagePart;
+import org.apache.poi.openxml4j.util.ZipSecureFile;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.util.IOUtils;
@@ -104,8 +107,9 @@ public class Generating_Report {
 	private static Map<String, XSSFChart> chartMap = new HashMap<>();
 	private static boolean islastSet=false;
 	private static String excelPath="";
-	private static String BTest_Name="";
+	private static String BTest_Name=(String) BTest_data.get("test_name");;
 	private static String folderFilePath="";
+	private static ProcessBuilder processBuilder;
 	
 	public static void adjusting_data(String excelFilePath) { 
 		try {
@@ -115,7 +119,7 @@ public class Generating_Report {
 			String testCode = GivingCellValueString(getCellValue(formsheet,"B1"));
 			String medium = GivingCellValueString(getCellValue(formsheet,"B2"));
 			String equality = (medium.equals("Online")) ? "=" : "!=";
-	        excelPath=excelFilePath;
+	        //excelPath=excelFilePath;
 			
 			System.out.println("Good Before Strp1");
 	        // Step 1: Join and filter
@@ -629,7 +633,8 @@ public class Generating_Report {
 //	                for(int i=0;i<finalOutput.size();i++) {
 //	                	populateTrialData(excelFilePath, i);
 //	                }
-	                populateTrialData(excelFilePath, 145); 
+	                createWorkbook();
+//	                populateTrialData(excelFilePath, 145); 
 	                //populateTrialData(excelFilePath, 15);
 	               
 	           
@@ -639,49 +644,135 @@ public class Generating_Report {
 		}
 	}
 	public static void createReports() {
+		try {
 		String folderName = BTest_Name;
-
-	    // Get the path to the desktop
-//	    String userHome = System.getProperty("user.home");
-//	    Path desktopPath = Paths.get(userHome, "Desktop");
-//
-//	    // Create the new folder path
-//	    Path newFolderPath = desktopPath.resolve(folderName);
-		
-		String oneDrivePath = System.getenv("OneDrive");
-	    if (oneDrivePath == null || oneDrivePath.isEmpty()) {
-	        throw new IllegalStateException("OneDrive path is not set");
-	    }
-	    
-	    Path desktopPath = Paths.get(oneDrivePath, "Desktop");
-
-	    // Create the new folder path
-	    Path newFolderPath = desktopPath.resolve(folderName);
-
-	    try {
-	        // Create the folder if it doesn't exist
-	        if (!Files.exists(newFolderPath)) {
-	            Files.createDirectory(newFolderPath);
+		 String desktopPath = getDesktopPath();
+	        if (desktopPath == null) {
+	            throw new IllegalStateException("Desktop path could not be found");
 	        }
-	        System.out.println("Folder created at: " + newFolderPath.toString());
-	        folderFilePath=newFolderPath.toString();
-	    } catch (IOException e) {
-	        e.printStackTrace();
-	    }
+
+	        // Create the new folder path
+	        Path newFolderPath = Paths.get(desktopPath, folderName);
+
+	        try {
+	            // Create the folder if it doesn't exist
+	            if (!Files.exists(newFolderPath)) {
+	                Files.createDirectory(newFolderPath);
+	            }
+	            System.out.println("Folder created at: " + newFolderPath.toString());
+	            folderFilePath = newFolderPath.toString();
+	        } catch (IOException e) {
+	            e.printStackTrace();
+	        }
+	        FileInputStream file = new FileInputStream(new File(excelPath));
+	     XSSFWorkbook workbook=new XSSFWorkbook(file);
 	    int total=finalOutput.size();
 	    //int total=10;
+	    long stTime = System.currentTimeMillis(); 
+	    ZipSecureFile.setMinInflateRatio(0.0000000001);
 		for(int i=0;i<total;i++) {
-			populateTrialData(excelPath, i);
+			//System.out.println(finalOutput.size());
+			populateTrialData( workbook, i);
 			App.updateProgress(i+1 + "/" + total);
+			if(i%50 == 0) {
+				try {
+				Runtime.getRuntime().gc();
+				System.gc();
+				file.close();
+				workbook.close();
+//				Thread.sleep(2000);
+				file = new FileInputStream(new File(excelPath));
+				workbook=new XSSFWorkbook(file);
+				}
+				catch(Exception e) {
+					e.printStackTrace();
+					
+				}
+			}
+			System.out.println("i: "+i+"\tTime: "+(System.currentTimeMillis()-stTime));
+			stTime = System.currentTimeMillis();
+		}
+//		File file=new File(excelPath);
+//		file.delete();
+		file.close();
+		workbook.close();
+		}
+		catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 	
-	private static void populateTrialData(String excelFilePath, Integer ind) {
+	private static void createWorkbook() throws IOException {
+		t2.clear();
+		ConvertFormat.student_marks_arr_1.clear();
+		ConvertFormat.student_info_arr.clear();
+		ConvertFormat.q_info_arr.clear();
+		ConvertFormat.correction_arr.clear();
+		XSSFWorkbook resultWorkbook=new XSSFWorkbook();
+		String fileName=BTest_Name + ".xlsx";
+		String desktopPath = getDesktopPath();
+		String filePath = desktopPath + File.separator + fileName;
+		 try (FileOutputStream fileOut = new FileOutputStream(filePath)) {
+	            resultWorkbook.write(fileOut);
+	            System.out.println("Workbook saved to: " + filePath);
+	        } catch (IOException e) {
+	            System.err.println("Failed to save the workbook. Error: " + e.getMessage());
+	            e.printStackTrace();
+	        } finally {
+	            // Close the workbook
+	            try {
+	                resultWorkbook.close();
+	            } catch (IOException e) {
+	                e.printStackTrace();
+	            }
+	        }
+		 resultWorkbook.close();
+		 
+		 excelPath=filePath;
+		 FileInputStream file = new FileInputStream(new File(excelPath));
+		 XSSFWorkbook workbook= new XSSFWorkbook(file);
+		 populateTrialData( workbook,0);
+		 file.close();
+		 workbook.close();
+		 String libreOfficePath = "C:\\Program Files\\LibreOffice\\program\\scalc.exe";
+		 processBuilder = new ProcessBuilder(
+		            libreOfficePath,
+		            "--headless",
+		            "--convert-to",
+		            "pdf",
+		            "--outdir",
+		            new File(excelPath).getParent(),
+		            excelPath
+		    );
+	}
+	private static String getDesktopPath() {
+        // Check for OneDrive path
+        String oneDrivePath = System.getenv("OneDrive");
+        if (oneDrivePath != null && !oneDrivePath.isEmpty()) {
+            Path desktopPath = Paths.get(oneDrivePath, "Desktop");
+            if (Files.exists(desktopPath)) {
+                return desktopPath.toString();
+            }
+        }
+        String userHome = System.getProperty("user.home");
+        Path defaultDesktopPath;
+
+        // Windows default desktop path
+        defaultDesktopPath = Paths.get(userHome, "Desktop");
+        if (Files.exists(defaultDesktopPath)) {
+            return defaultDesktopPath.toString();
+        }
+
+        // If none of the standard locations work, fall back to the home directory
+        return userHome;
+    }
+	
+	private static void populateTrialData(XSSFWorkbook workbook, Integer ind) {
 		try {
-			System.out.println(ind);
+			//System.out.println(ind);
 			Map<String, Object> currdata=finalOutput.get(ind);
-			FileInputStream file = new FileInputStream(new File(excelFilePath));
-			XSSFWorkbook workbook = new XSSFWorkbook(file);
+			//FileInputStream file = new FileInputStream(new File(excelFilePath));
+			//XSSFWorkbook workbook = new XSSFWorkbook(file);
 			//XSSFSheet outputsheet = workbook.createSheet((String)currdata.get("student_roll_no")); 
 			//XSSFSheet outputsheet=workbook.getSheet("Trial");
 			XSSFSheet outputsheet= workbook.getSheet("Btest Report");
@@ -693,23 +784,24 @@ public class Generating_Report {
 			int sheetIndex = workbook.getSheetIndex(outputsheet);
 			//setBordersToWhite(outputsheet);
 			//setSheetAppearance(outputsheet);
+			//System.out.println("inputstream is successful " + ind);
 			
 			XSSFColor blackColor = new XSSFColor(new Color(0, 0, 0), null);
-			CellStyle style = createCellStyle(workbook, true, HorizontalAlignment.CENTER, BorderStyle.THIN, blackColor, null, null);
-			CellStyle localHeadingStyle = createCellStyle(workbook, true, HorizontalAlignment.CENTER, null, null, null, null);
+			XSSFCellStyle style = createCellStyle(workbook, true, HorizontalAlignment.CENTER, BorderStyle.THIN, blackColor, null, null);
+			XSSFCellStyle localHeadingStyle = createCellStyle(workbook, true, HorizontalAlignment.CENTER, null, null, null, null);
 	        XSSFColor greenColor = new XSSFColor(new Color(0, 128, 0), null);
-	        CellStyle styleWithGreenBorder = createCellStyle(workbook, true, HorizontalAlignment.CENTER, BorderStyle.MEDIUM, greenColor, null, null);
+	        XSSFCellStyle styleWithGreenBorder = createCellStyle(workbook, true, HorizontalAlignment.CENTER, BorderStyle.MEDIUM, greenColor, null, null);
 	        XSSFColor redColor = new XSSFColor(new Color(255, 0, 0), null);
-	        CellStyle styleWithRedBorder = createCellStyle(workbook, true, HorizontalAlignment.CENTER, BorderStyle.MEDIUM, redColor, null, null);
+	        XSSFCellStyle styleWithRedBorder = createCellStyle(workbook, true, HorizontalAlignment.CENTER, BorderStyle.MEDIUM, redColor, null, null);
 	        XSSFColor yellowColor = new XSSFColor(new Color(255, 255, 0), null);
-	        CellStyle styleWithYellowBorder = createCellStyle(workbook, true, HorizontalAlignment.CENTER, BorderStyle.MEDIUM, yellowColor, null, null);
+	        XSSFCellStyle styleWithYellowBorder = createCellStyle(workbook, true, HorizontalAlignment.CENTER, BorderStyle.MEDIUM, yellowColor, null, null);
 	        XSSFColor mainheadingGreenColor = new XSSFColor(new Color(39, 78, 19), null);
 	        XSSFColor whiteColor = new XSSFColor(new Color(255, 255, 255), null);
 	        XSSFColor headingGreenColor = new XSSFColor(new Color(212, 228, 206), null);
-	        CellStyle styleMainHeading = createCellStyle(workbook, true, HorizontalAlignment.CENTER, null, null, whiteColor, mainheadingGreenColor);
-	        CellStyle styleHeading = createCellStyle(workbook, true, HorizontalAlignment.CENTER, null, null, blackColor, headingGreenColor);
+	        XSSFCellStyle styleMainHeading = createCellStyle(workbook, true, HorizontalAlignment.CENTER, null, null, whiteColor, mainheadingGreenColor);
+	        XSSFCellStyle styleHeading = createCellStyle(workbook, true, HorizontalAlignment.CENTER, null, null, blackColor, headingGreenColor);
 	        XSSFColor headingBlueColor = new XSSFColor(new Color(207, 226, 243), null);
-	        CellStyle blueStyleHeading = createCellStyle(workbook, true, HorizontalAlignment.CENTER, null, null, blackColor, headingBlueColor);
+	        XSSFCellStyle blueStyleHeading = createCellStyle(workbook, true, HorizontalAlignment.CENTER, null, null, blackColor, headingBlueColor);
 	        
 //	        Row firstRow=outputsheet.getRow(0);
 //	        firstRow.setHeight((short) (3*(1440/2.54f)));
@@ -755,12 +847,12 @@ public class Generating_Report {
 	        }
 	        
 	        }
-	        System.out.println("not the heading problem");
+	        //System.out.println("not the heading problem");
 	        int pageStartRow=0;
 
 			
-			String btest_name = (String) BTest_data.get("test_name");
-			BTest_Name=btest_name;
+			//String btest_name = (String) BTest_data.get("test_name");
+			//BTest_Name=btest_name;
 //            String timestamp = (String) BTest_data.get("time_stamp");
 //            DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss 'GMT'");
 //            DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -770,7 +862,7 @@ public class Generating_Report {
             List<Map<String, Object>> subjectsList = (List<Map<String, Object>>) BTest_data.get("subjects");
            
             mergeAndSetCellValue(outputsheet, 2, 2, 0, 9, currdata.get("student_roll_no") + " - " + currdata.get("name"), styleMainHeading);
-            if(!islastSet)mergeAndSetCellValue(outputsheet, 3, 3, 0, 9, "Detailed Analysis for " + btest_name + " conducted on " + test_date, styleMainHeading);
+            if(!islastSet)mergeAndSetCellValue(outputsheet, 3, 3, 0, 9, "Detailed Analysis for " + BTest_Name + " conducted on " + test_date, styleMainHeading);
             
             if(!islastSet)mergeAndSetCellValue(outputsheet, 5, 5, 0, 9, "Marks Analysis", styleHeading);
 	        
@@ -780,6 +872,9 @@ public class Generating_Report {
             Double total_marks=0.0;
             Double total_marks_per_avg=0.0;
             Double total_marks_per_80=0.0;
+//            for (Double value : percentiles.values()) {
+//                total_marks_per_80= value;
+//            }
             Double total_neg_avg=0.0;
             Double total_negative_marks=0.0;
             Double total_positive_marks=0.0;
@@ -943,7 +1038,7 @@ public class Generating_Report {
             	     String shapename = xssfPicture.getShapeName();
             	     int row = xssfPicture.getClientAnchor().getRow1();
             	     int col = xssfPicture.getClientAnchor().getCol1();
-            	     System.out.println("Picture " + "" + " with Shapename: " + shapename + " is located row: " + row + ", col: " + col);
+            	     //System.out.println("Picture " + "" + " with Shapename: " + shapename + " is located row: " + row + ", col: " + col);
 
             	     if (shapename.contains("Picture")) {
             	    	 deleteEmbeddedXSSFPicture(xssfPicture);
@@ -1053,7 +1148,7 @@ public class Generating_Report {
             	    // Extract the question number from the key
             	    int q_no = Integer.parseInt(key.split("_")[1]);
             	    
-            	    CellStyle currstyle=style;
+            	    XSSFCellStyle currstyle=style;
             	    String ques_status = (String) currdata.get("status_" + subj_name + "_" + q_no);
             	    //System.out.println(ques_status);
             	    if ("CORRECT".equals(ques_status)) currstyle = styleWithGreenBorder;
@@ -1129,7 +1224,7 @@ public class Generating_Report {
                  	Map<String, Map<String, Double>> ques_perc=(ques_analysis.get(subj_name)).get(set_no);
                  	Map<String, Double> stats = ques_perc.get(subj_name + "_" + j);
                  	
-                 	CellStyle currstyle=style;
+                 	XSSFCellStyle currstyle=style;
                  	String ques_status = (String) currdata.get("status_" + subj_name + "_" + j);
                  	if ("CORRECT".equals(ques_status)) currstyle = styleWithGreenBorder;
                     else if ("NOT CORRECT".equals(ques_status)) currstyle = styleWithRedBorder;
@@ -1256,13 +1351,13 @@ public class Generating_Report {
              }
              }
              
-            String pdfFilePath=folderFilePath + "\\" + currdata.get("student_roll_no") + ".pdf";
-			FileOutputStream fileOut = new FileOutputStream(excelFilePath);
+            String pdfFilePath=folderFilePath + "\\" + currdata.get("student_roll_no") + "_" + BTest_Name + ".pdf";
+			FileOutputStream fileOut = new FileOutputStream(excelPath);
 			workbook.write(fileOut);
 			fileOut.close();
-			file.close();
-			workbook.close();
-			if(islastSet)exportToPdf(excelFilePath, pdfFilePath);
+			//file.close();
+			//workbook.close();
+			if(islastSet)exportToPdf(pdfFilePath);
 			islastSet=true;
 		}
 		catch(Exception e)
@@ -1273,7 +1368,7 @@ public class Generating_Report {
 	
 	
 	
-	private static void setCellValue(Sheet sheet, int rowIndex, int columnIndex, Object value, CellStyle style) {
+	private static void setCellValue(Sheet sheet, int rowIndex, int columnIndex, Object value, XSSFCellStyle style) {
 	    Row row = sheet.getRow(rowIndex);
 	    if (row == null) {
 	        row = sheet.createRow(rowIndex);
@@ -1421,16 +1516,16 @@ public class Generating_Report {
         stats.put("correct", 0.0);
         return stats;
     }
-    public static CellStyle createCellStyle(Workbook workbook, boolean bold, HorizontalAlignment alignment, BorderStyle borderStyle, XSSFColor borderColor, XSSFColor textColor, XSSFColor backgroundColor) {
-        CellStyle style = workbook.createCellStyle();
+    public static XSSFCellStyle createCellStyle(XSSFWorkbook workbook, boolean bold, HorizontalAlignment alignment, BorderStyle borderStyle, XSSFColor borderColor, XSSFColor textColor, XSSFColor backgroundColor) {
+        XSSFCellStyle style = workbook.createCellStyle();
         style.setAlignment(alignment);
 
-        Font font = workbook.createFont();
+        XSSFFont font = workbook.createFont();
         font.setBold(bold);
         if (textColor != null) {
-            font.setColor(textColor.getIndex());
+            font.setColor(textColor);
         } else {
-            font.setColor(IndexedColors.BLACK.getIndex()); // Default to black if textColor is null
+            font.setColor(new XSSFColor(java.awt.Color.BLACK, null)); // Default to black if textColor is null
         }
         style.setFont(font);
 
@@ -1447,28 +1542,25 @@ public class Generating_Report {
             style.setBorderRight(borderStyle);
         }
 
-        if (style instanceof XSSFCellStyle) {
-            XSSFCellStyle xssfStyle = (XSSFCellStyle) style;
-            if (borderColor != null) {
-                xssfStyle.setTopBorderColor(borderColor);
-                xssfStyle.setBottomBorderColor(borderColor);
-                xssfStyle.setLeftBorderColor(borderColor);
-                xssfStyle.setRightBorderColor(borderColor);
-            } else {
-                // Reset border colors to default if borderColor is null
-                xssfStyle.setTopBorderColor(new XSSFColor(java.awt.Color.WHITE, null));
-                xssfStyle.setBottomBorderColor(new XSSFColor(java.awt.Color.WHITE, null));
-                xssfStyle.setLeftBorderColor(new XSSFColor(java.awt.Color.WHITE, null));
-                xssfStyle.setRightBorderColor(new XSSFColor(java.awt.Color.WHITE, null));
-            }
+        if (borderColor != null) {
+            style.setTopBorderColor(borderColor);
+            style.setBottomBorderColor(borderColor);
+            style.setLeftBorderColor(borderColor);
+            style.setRightBorderColor(borderColor);
+        } else {
+            // Reset border colors to default if borderColor is null
+            style.setTopBorderColor(new XSSFColor(java.awt.Color.WHITE, null));
+            style.setBottomBorderColor(new XSSFColor(java.awt.Color.WHITE, null));
+            style.setLeftBorderColor(new XSSFColor(java.awt.Color.WHITE, null));
+            style.setRightBorderColor(new XSSFColor(java.awt.Color.WHITE, null));
+        }
 
-            if (backgroundColor != null) {
-                xssfStyle.setFillForegroundColor(backgroundColor);
-                xssfStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-            } else {
-                xssfStyle.setFillForegroundColor(new XSSFColor(java.awt.Color.WHITE, null)); // Default to white if backgroundColor is null
-                xssfStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-            }
+        if (backgroundColor != null) {
+            style.setFillForegroundColor(backgroundColor);
+            style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        } else {
+            style.setFillForegroundColor(new XSSFColor(java.awt.Color.WHITE, null)); // Default to white if backgroundColor is null
+            style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
         }
 
         return style;
@@ -1537,21 +1629,21 @@ public class Generating_Report {
     	   for (int i = 0; i < drawing.getCTDrawing().getTwoCellAnchorList().size(); i++) {
     	    if (cursor.getObject().equals(drawing.getCTDrawing().getTwoCellAnchorArray(i))) {
     	     drawing.getCTDrawing().removeTwoCellAnchor(i);
-    	     System.out.println("TwoCellAnchor for picture " + xssfPicture + " was deleted.");
+    	     //System.out.println("TwoCellAnchor for picture " + xssfPicture + " was deleted.");
     	    }
     	   }
     	  } else if (cursor.getObject() instanceof org.openxmlformats.schemas.drawingml.x2006.spreadsheetDrawing.CTOneCellAnchor) {
     	   for (int i = 0; i < drawing.getCTDrawing().getOneCellAnchorList().size(); i++) {
     	    if (cursor.getObject().equals(drawing.getCTDrawing().getOneCellAnchorArray(i))) {
     	     drawing.getCTDrawing().removeOneCellAnchor(i);
-    	     System.out.println("OneCellAnchor for picture " + xssfPicture + " was deleted.");
+    	     //System.out.println("OneCellAnchor for picture " + xssfPicture + " was deleted.");
     	    }
     	   }
     	  } else if (cursor.getObject() instanceof org.openxmlformats.schemas.drawingml.x2006.spreadsheetDrawing.CTAbsoluteAnchor) {
     	   for (int i = 0; i < drawing.getCTDrawing().getAbsoluteAnchorList().size(); i++) {
     	    if (cursor.getObject().equals(drawing.getCTDrawing().getAbsoluteAnchorArray(i))) {
     	     drawing.getCTDrawing().removeAbsoluteAnchor(i);
-    	     System.out.println("AbsoluteAnchor for picture " + xssfPicture + " was deleted.");
+    	     //System.out.println("AbsoluteAnchor for picture " + xssfPicture + " was deleted.");
     	    }
     	   }
     	  }
@@ -1565,28 +1657,28 @@ public class Generating_Report {
     	     XSSFDrawing drawing = xssfPicture.getDrawing();
     	     drawing.getPackagePart().removeRelationship(rId);
     	     drawing.getPackagePart().getPackage().deletePartRecursive(drawing.getRelationById(rId).getPackagePart().getPartName());
-    	     System.out.println("Picture " + xssfPicture + " was deleted.");
+    	     //System.out.println("Picture " + xssfPicture + " was deleted.");
     	    }
     	   }
     	  }
     	 }
-    public static void exportToPdf(String excelFilePath, String pdfFilePath) {
+    public static void exportToPdf(String pdfFilePath ) {
         try {
             // Path to LibreOffice Calc executable
-            String libreOfficePath = "C:\\Program Files\\LibreOffice\\program\\scalc.exe";
+//            String libreOfficePath = "C:\\Program Files\\LibreOffice\\program\\scalc.exe";
 
             // Command to convert Excel to PDF
-            ProcessBuilder processBuilder = new ProcessBuilder(
-                    libreOfficePath,
-                    "--headless",
-                    "--convert-to",
-                    "pdf",
-                    "--outdir",
-                    new File(excelFilePath).getParent(),
-                    excelFilePath
-            );
+//            ProcessBuilder processBuilder = new ProcessBuilder(
+//                    libreOfficePath,
+//                    "--headless",
+//                    "--convert-to",
+//                    "pdf",
+//                    "--outdir",
+//                    new File(excelFilePath).getParent(),
+//                    excelFilePath
+//            );
 
-            System.out.println("Executing command: " + processBuilder.command());
+            //System.out.println("Executing command: " + processBuilder.command());
 
             // Start the process
             Process process = processBuilder.start();
@@ -1596,18 +1688,19 @@ public class Generating_Report {
                 //System.out.println("LibreOffice conversion successful");
 
                 // LibreOffice generates a PDF with the same name as the Excel file in the same directory
-                String generatedPdfPath = excelFilePath.replace(".xlsx", ".pdf");
+                String generatedPdfPath = excelPath.replace(".xlsx", ".pdf");
                 Path source = Paths.get(generatedPdfPath);
                 Path target = Paths.get(pdfFilePath);
 
                 // Rename/move the generated PDF to the desired file name and location
                 Files.move(source, target);
 
-                System.out.println("PDF created successfully at: " + pdfFilePath);
+                //System.out.println("PDF created successfully at: " + pdfFilePath);
+                
             } else {
-                System.err.println("LibreOffice conversion failed with exit code: " + exitCode);
+               // System.err.println("LibreOffice conversion failed with exit code: " + exitCode);
             }
-
+            process.destroy();
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }

@@ -75,14 +75,14 @@ public class App {
 		btnRead.setBounds(285, 388, 85, 21);
 		frame.getContentPane().add(btnRead);
 		
-		txtReportIn = new JTextField();
-		txtReportIn.setBounds(182, 303, 294, 19);
-		frame.getContentPane().add(txtReportIn);
-		txtReportIn.setColumns(10);
+//		txtReportIn = new JTextField();
+//		txtReportIn.setBounds(182, 303, 294, 19);
+//		frame.getContentPane().add(txtReportIn);
+//		txtReportIn.setColumns(10);
 		
-		JButton btnBrowseReportIn = new JButton("Browse");
-	    btnBrowseReportIn.setBounds(564, 303, 100, 19);
-	    frame.getContentPane().add(btnBrowseReportIn);
+//		JButton btnBrowseReportIn = new JButton("Browse");
+//	    btnBrowseReportIn.setBounds(564, 303, 100, 19);
+//	    frame.getContentPane().add(btnBrowseReportIn);
 		
 		btnCreateReports = new JButton("Create Reports");
 		btnCreateReports.addActionListener(new ActionListener() {
@@ -111,15 +111,15 @@ public class App {
 	        }
 	    });
 	    
-	    btnBrowseReportIn.addActionListener(new ActionListener() {
-	        public void actionPerformed(ActionEvent e) {
-	            int result = fileChooser.showOpenDialog(frame);
-	            if (result == JFileChooser.APPROVE_OPTION) {
-	                File selectedFile = fileChooser.getSelectedFile();
-	                txtReportIn.setText(selectedFile.getAbsolutePath());
-	            }
-	        }
-	    });
+//	    btnBrowseReportIn.addActionListener(new ActionListener() {
+//	        public void actionPerformed(ActionEvent e) {
+//	            int result = fileChooser.showOpenDialog(frame);
+//	            if (result == JFileChooser.APPROVE_OPTION) {
+//	                File selectedFile = fileChooser.getSelectedFile();
+//	                txtReportIn.setText(selectedFile.getAbsolutePath());
+//	            }
+//	        }
+//	    });
 		
 		btnRead.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
@@ -141,7 +141,7 @@ public class App {
 //                Generating_Report.adjusting_data(fileNameReportIn);
 //                updateProgress("Results are in memory. Please check the sample report in excel file and do changes if required. Pleae make sure to SAVE after changes. After all this please click Create Reports button.");
             	btnRead.setEnabled(false);
-                new ReadWorker(txtAddressOfResult.getText(), txtReportIn.getText()).execute();
+                new ReadWorker(txtAddressOfResult.getText()).execute();
             }
         });
 		btnCreateReports.addActionListener(new ActionListener() {
@@ -167,11 +167,10 @@ public class App {
 	
     private class ReadWorker extends SwingWorker<Void, Void> {
         private String addressOfResult;
-        private String reportIn;
+        //private String reportIn;
 
-        public ReadWorker(String addressOfResult, String reportIn) {
+        public ReadWorker(String addressOfResult) {
             this.addressOfResult = addressOfResult;
-            this.reportIn = reportIn;
         }
 
         @Override
@@ -180,8 +179,7 @@ public class App {
             String fileName = addressOfResult.replace("\"", "");
             SetBTestData.setBTestData(fileName);
             ConvertFormat.ConvertFormat(fileName);
-            String fileNameReportIn = reportIn.replace("\"", "");
-            Generating_Report.adjusting_data(fileNameReportIn);
+            Generating_Report.adjusting_data(fileName);
 //            updateProgress("Results are in memory."/* Please check the"
 //            		+ " sample report in excel file and do changes if required."
 //            		+ " Please make sure to SAVE after changes. "
