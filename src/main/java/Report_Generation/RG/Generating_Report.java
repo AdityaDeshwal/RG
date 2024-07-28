@@ -13,6 +13,7 @@ import org.jfree.chart.renderer.category.StackedBarRenderer;
 import org.jfree.data.category.DefaultCategoryDataset;
 import org.jfree.ui.RefineryUtilities;
 import org.openxmlformats.schemas.drawingml.x2006.chart.CTPlotArea;
+import org.openxmlformats.schemas.drawingml.x2006.chart.STTickLblPos;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTBlip;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTBlipFillProperties;
 import org.openxmlformats.schemas.drawingml.x2006.picture.CTPicture;
@@ -31,6 +32,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -74,6 +76,7 @@ import org.apache.poi.xssf.usermodel.XSSFDrawing;
 import org.apache.poi.xssf.usermodel.XSSFFont;
 import org.apache.poi.xssf.usermodel.XSSFPicture;
 import org.apache.poi.xssf.usermodel.XSSFPictureData;
+import org.apache.poi.xssf.usermodel.XSSFRichTextString;
 import org.apache.poi.xssf.usermodel.XSSFShape;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFSimpleShape;
@@ -89,6 +92,7 @@ import org.checkerframework.checker.units.qual.min;
 
 public class Generating_Report {
 	private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+	private static final SimpleDateFormat IndiandateFormat = new SimpleDateFormat("dd-MM-yyyy");
 	public static Map<String, Object> BTest_data = SetBTestData.BTestData;
 	private static final Map<String, String> subjFullForm = Map.of(
 	        "PHY", "Physics",
@@ -110,6 +114,21 @@ public class Generating_Report {
 	private static String BTest_Name=(String) BTest_data.get("test_name");;
 	private static String folderFilePath="";
 	private static ProcessBuilder processBuilder;
+	private static Double total_marks_per_80=0.0;
+//    for (Double value : percentiles.values()) {
+//        total_marks_per_80+= value;
+//    }
+	private static String test_date_unparsed=(String)(BTest_data.get("test_date"));
+	
+	  private static String convertDateFormat(String dateString) {
+	        try {
+	            Date date = dateFormat.parse(dateString);
+	            return IndiandateFormat.format(date);
+	        } catch (ParseException e) {
+	            return "Invalid Date";
+	        }
+	    }
+	  private static String test_date=convertDateFormat(test_date_unparsed);
 	
 	public static void adjusting_data(String excelFilePath) { 
 		try {
@@ -159,7 +178,11 @@ public class Generating_Report {
 //	        .filter(e -> e.get("set_no").toString().equals(equality))
 	        
 	        //t1.forEach(System.out::println);
-
+	        ConvertFormat.student_marks_arr_1.clear();
+			ConvertFormat.student_info_arr.clear();
+			ConvertFormat.q_info_arr.clear();
+			ConvertFormat.correction_arr.clear();
+			System.gc();
 	        System.out.println("Step 1 working fine");
 	        // Step 2: Pivot and aggregate
 	        t2 = t1.stream()
@@ -234,6 +257,7 @@ public class Generating_Report {
 //	            data.forEach((innerKey, value) -> System.out.println("  " + innerKey + ": " + value));
 //	        });     
 //	        
+	        System.gc();
 	        System.out.println("Step 2 working fine");
 //	        // Step 3: Further aggregate by student and set number
 	        
@@ -252,6 +276,7 @@ public class Generating_Report {
 	        }
 
 	        // Create t3
+	        System.gc();
 	        List<Map<String, Object>> t3 = t2.values().stream()
 	            .map(aggregatedData -> {
 	                Map<String, Object> rowData = new HashMap<>();
@@ -282,6 +307,8 @@ public class Generating_Report {
 	    
 	        System.out.println("Step 3 working fine");
 //	        // Step 4: Calculate percentages
+	        t2.clear();
+	        System.gc();
 	        
 	        Map<String, Map<String, Map<String, Map<String, Object>>>> groupedData = t1.stream()
 	                .collect(Collectors.groupingBy(
@@ -347,6 +374,8 @@ public class Generating_Report {
 	       // t4.forEach(System.out::println);
 ////	        
 	        System.out.println("Step 4 working fine");
+	        groupedData.clear();
+	        System.gc();
 //
 //	        // Step 5: Final combination and sorting
 	        Map<String, Map<String, Map<String, Map<String, Object>>>> groupedDatafort5 = t1.stream()
@@ -438,6 +467,9 @@ public class Generating_Report {
 
 	            // Print t5 for verification
 	           // t5.forEach(System.out::println);
+	            t1.clear();
+	            groupedDatafort5.clear();
+	            System.gc();
 	            
 	            List<String> subj_names = subjectsList.stream()
 	                    .map(sub -> sub.get("subject_name").toString())
@@ -516,6 +548,13 @@ public class Generating_Report {
 	                        return finalRow;
 	                    })
 	                    .collect(Collectors.toList());
+	                
+	                t1.clear();
+	                t2.clear();
+	                t3.clear();
+	                t4.clear();
+	                t5.clear();
+	                System.gc();
 
 	                // Process finalOutput
 	                for (Map<String, Object> studentData : finalOutput) {
@@ -633,6 +672,7 @@ public class Generating_Report {
 //	                for(int i=0;i<finalOutput.size();i++) {
 //	                	populateTrialData(excelFilePath, i);
 //	                }
+	                System.gc();
 	                createWorkbook();
 //	                populateTrialData(excelFilePath, 145); 
 	                //populateTrialData(excelFilePath, 15);
@@ -643,6 +683,24 @@ public class Generating_Report {
 			e.printStackTrace();
 		}
 	}
+	
+	private static XSSFColor blackColor;
+	private static XSSFCellStyle style;
+	private static XSSFCellStyle localHeadingStyle;
+	private static XSSFColor greenColor;;
+	private static XSSFCellStyle styleWithGreenBorder;
+	private static XSSFColor redColor;
+	private static XSSFCellStyle styleWithRedBorder;
+	private static XSSFColor yellowColor;
+	private static XSSFCellStyle styleWithYellowBorder;
+	private static XSSFColor mainheadingGreenColor;
+	private static XSSFColor whiteColor;
+	private static XSSFColor headingGreenColor;
+	private static XSSFCellStyle styleMainHeading;
+	private static XSSFCellStyle styleHeading;						
+	private static XSSFColor headingBlueColor;
+	private static XSSFCellStyle blueStyleHeading;
+	
 	public static void createReports() {
 		try {
 		String folderName = BTest_Name;
@@ -666,10 +724,11 @@ public class Generating_Report {
 	        }
 	        FileInputStream file = new FileInputStream(new File(excelPath));
 	     XSSFWorkbook workbook=new XSSFWorkbook(file);
+	     setAllStyles(workbook);
 	    int total=finalOutput.size();
 	    //int total=10;
 	    long stTime = System.currentTimeMillis(); 
-	    ZipSecureFile.setMinInflateRatio(0.0000000001);
+	    ZipSecureFile.setMinInflateRatio(0);
 		for(int i=0;i<total;i++) {
 			//System.out.println(finalOutput.size());
 			populateTrialData( workbook, i);
@@ -683,6 +742,7 @@ public class Generating_Report {
 //				Thread.sleep(2000);
 				file = new FileInputStream(new File(excelPath));
 				workbook=new XSSFWorkbook(file);
+				setAllStyles(workbook);
 				}
 				catch(Exception e) {
 					e.printStackTrace();
@@ -704,10 +764,10 @@ public class Generating_Report {
 	
 	private static void createWorkbook() throws IOException {
 		t2.clear();
-		ConvertFormat.student_marks_arr_1.clear();
-		ConvertFormat.student_info_arr.clear();
-		ConvertFormat.q_info_arr.clear();
-		ConvertFormat.correction_arr.clear();
+//		ConvertFormat.student_marks_arr_1.clear();
+//		ConvertFormat.student_info_arr.clear();
+//		ConvertFormat.q_info_arr.clear();
+//		ConvertFormat.correction_arr.clear();
 		XSSFWorkbook resultWorkbook=new XSSFWorkbook();
 		String fileName=BTest_Name + ".xlsx";
 		String desktopPath = getDesktopPath();
@@ -731,7 +791,10 @@ public class Generating_Report {
 		 excelPath=filePath;
 		 FileInputStream file = new FileInputStream(new File(excelPath));
 		 XSSFWorkbook workbook= new XSSFWorkbook(file);
-		 populateTrialData( workbook,0);
+		 if(!islastSet) {
+			 setAllStyles(workbook);
+			 populateTrialData(workbook,0);
+			 }
 		 file.close();
 		 workbook.close();
 		 String libreOfficePath = "C:\\Program Files\\LibreOffice\\program\\scalc.exe";
@@ -745,27 +808,47 @@ public class Generating_Report {
 		            excelPath
 		    );
 	}
+//	private static String getDesktopPath() {
+//        // Check for OneDrive path
+//        String oneDrivePath = System.getenv("OneDrive");
+//        if (oneDrivePath != null && !oneDrivePath.isEmpty()) {
+//            Path desktopPath = Paths.get(oneDrivePath, "Desktop");
+//            if (Files.exists(desktopPath)) {
+//                return desktopPath.toString();
+//            }
+//        }
+//        String userHome = System.getProperty("user.home");
+//        Path defaultDesktopPath;
+//
+//        // Windows default desktop path
+//        defaultDesktopPath = Paths.get(userHome, "Desktop");
+//        if (Files.exists(defaultDesktopPath)) {
+//            return defaultDesktopPath.toString();
+//        }
+//        return userHome;
+//    }
 	private static String getDesktopPath() {
-        // Check for OneDrive path
-        String oneDrivePath = System.getenv("OneDrive");
-        if (oneDrivePath != null && !oneDrivePath.isEmpty()) {
-            Path desktopPath = Paths.get(oneDrivePath, "Desktop");
-            if (Files.exists(desktopPath)) {
-                return desktopPath.toString();
-            }
-        }
-        String userHome = System.getProperty("user.home");
-        Path defaultDesktopPath;
+	    String userHome = System.getProperty("user.home");
+	    Path defaultDesktopPath = Paths.get(userHome, "Desktop");
 
-        // Windows default desktop path
-        defaultDesktopPath = Paths.get(userHome, "Desktop");
-        if (Files.exists(defaultDesktopPath)) {
-            return defaultDesktopPath.toString();
-        }
+	    // Check default desktop path first
+	    if (Files.exists(defaultDesktopPath)) {
+	        return defaultDesktopPath.toString();
+	    }
 
-        // If none of the standard locations work, fall back to the home directory
-        return userHome;
-    }
+	    // Check for OneDrive path
+	    String oneDrivePath = System.getenv("OneDrive");
+	    if (oneDrivePath != null && !oneDrivePath.isEmpty()) {
+	        Path oneDriveDesktopPath = Paths.get(oneDrivePath, "Desktop");
+	        if (Files.exists(oneDriveDesktopPath)) {
+	            return oneDriveDesktopPath.toString();
+	        }
+	    }
+
+	    // If neither path is found, return the user home directory
+	    return userHome;
+	}
+
 	
 	private static void populateTrialData(XSSFWorkbook workbook, Integer ind) {
 		try {
@@ -786,22 +869,6 @@ public class Generating_Report {
 			//setSheetAppearance(outputsheet);
 			//System.out.println("inputstream is successful " + ind);
 			
-			XSSFColor blackColor = new XSSFColor(new Color(0, 0, 0), null);
-			XSSFCellStyle style = createCellStyle(workbook, true, HorizontalAlignment.CENTER, BorderStyle.THIN, blackColor, null, null);
-			XSSFCellStyle localHeadingStyle = createCellStyle(workbook, true, HorizontalAlignment.CENTER, null, null, null, null);
-	        XSSFColor greenColor = new XSSFColor(new Color(0, 128, 0), null);
-	        XSSFCellStyle styleWithGreenBorder = createCellStyle(workbook, true, HorizontalAlignment.CENTER, BorderStyle.MEDIUM, greenColor, null, null);
-	        XSSFColor redColor = new XSSFColor(new Color(255, 0, 0), null);
-	        XSSFCellStyle styleWithRedBorder = createCellStyle(workbook, true, HorizontalAlignment.CENTER, BorderStyle.MEDIUM, redColor, null, null);
-	        XSSFColor yellowColor = new XSSFColor(new Color(255, 255, 0), null);
-	        XSSFCellStyle styleWithYellowBorder = createCellStyle(workbook, true, HorizontalAlignment.CENTER, BorderStyle.MEDIUM, yellowColor, null, null);
-	        XSSFColor mainheadingGreenColor = new XSSFColor(new Color(39, 78, 19), null);
-	        XSSFColor whiteColor = new XSSFColor(new Color(255, 255, 255), null);
-	        XSSFColor headingGreenColor = new XSSFColor(new Color(212, 228, 206), null);
-	        XSSFCellStyle styleMainHeading = createCellStyle(workbook, true, HorizontalAlignment.CENTER, null, null, whiteColor, mainheadingGreenColor);
-	        XSSFCellStyle styleHeading = createCellStyle(workbook, true, HorizontalAlignment.CENTER, null, null, blackColor, headingGreenColor);
-	        XSSFColor headingBlueColor = new XSSFColor(new Color(207, 226, 243), null);
-	        XSSFCellStyle blueStyleHeading = createCellStyle(workbook, true, HorizontalAlignment.CENTER, null, null, blackColor, headingBlueColor);
 	        
 //	        Row firstRow=outputsheet.getRow(0);
 //	        firstRow.setHeight((short) (3*(1440/2.54f)));
@@ -839,6 +906,10 @@ public class Generating_Report {
 	        	case 7:
 	        		columnwidth=(int) (4*60*20);
 	        		break;
+	        	case 3:
+	        	case 6:
+	        		columnwidth=(int) (2*60*20);
+	        		break;
 	        	default:
 	        		columnwidth=(int) (2.5*60*20);
 	        		break;
@@ -858,7 +929,7 @@ public class Generating_Report {
 //            DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 //            LocalDateTime dateTime = LocalDateTime.parse(timestamp, inputFormatter);
 //            //String test_date = dateTime.format(outputFormatter);
-            String test_date=(String) BTest_data.get("test_date");
+//            String test_date=(String) BTest_data.get("test_date");
             List<Map<String, Object>> subjectsList = (List<Map<String, Object>>) BTest_data.get("subjects");
            
             mergeAndSetCellValue(outputsheet, 2, 2, 0, 9, currdata.get("student_roll_no") + " - " + currdata.get("name"), styleMainHeading);
@@ -871,9 +942,9 @@ public class Generating_Report {
 //	        outputsheet.addMergedRegion(mergedRegion2);
             Double total_marks=0.0;
             Double total_marks_per_avg=0.0;
-            Double total_marks_per_80=0.0;
+//            Double total_marks_per_80=0.0;
 //            for (Double value : percentiles.values()) {
-//                total_marks_per_80= value;
+//                total_marks_per_80+= value;
 //            }
             Double total_neg_avg=0.0;
             Double total_negative_marks=0.0;
@@ -909,7 +980,7 @@ public class Generating_Report {
             	Double subj_marks_per_avg=(Double)currdata.get("marks_per_avg_" + subj_name);
             	total_marks_per_avg+=subj_marks_per_avg;
             	Double subj_marks_per_80=(Double)currdata.get("marks_per_80_" + subj_name);
-            	total_marks_per_80+=subj_marks_per_80;
+            	//total_marks_per_80+=subj_marks_per_80;
             	//System.out.println(subj_name);
             	setCellValue(outputsheet,start_row,start_col,subj_total_marks,style);
             	setCellValue(outputsheet,start_row+1,start_col,df.format(subj_marks_per_avg),style);
@@ -969,7 +1040,7 @@ public class Generating_Report {
         	start_col++;
         	setCellValue(outputsheet,start_row,start_col,total_marks,style);
         	setCellValue(outputsheet,start_row+1,start_col,df.format(total_marks/sum_of_averages),style);
-        	setCellValue(outputsheet,start_row+2,start_col,df.format(total_marks_per_80/subjectsList.size()),style);
+        	setCellValue(outputsheet,start_row+2,start_col,df.format(total_marks/total_marks_per_80),style);
         	start_col+=2;
         	//System.out.println("2");
         	if(!islastSet) {setCellValue(outputsheet,start_row,start_col,"Positive Marks",style);
@@ -991,7 +1062,7 @@ public class Generating_Report {
         	
         	start_row+=5;//crossing the total
         	
-        	start_row+=1;//making some gap
+        	//start_row+=1;//making some gap
 //        	if(!islastSet) {
 //           	 //workbook.setPrintArea(sheetIndex, 0, 9, pageStartRow, start_row-1);
 //           	 outputsheet.setRowBreak(start_row-1);
@@ -1001,7 +1072,7 @@ public class Generating_Report {
         	
         	//here heading will go
         	
-        	start_row+=4;
+        	start_row+=3;
         	
         	 Map<String, DefaultCategoryDataset> datasetMap= new HashMap<>();
 
@@ -1081,8 +1152,8 @@ public class Generating_Report {
 
              for (String qTypeName : chartMap.keySet()) {
             	 if(colIndex>=10) {
-                	 start_row+=12;
-                	 rowIndex+=12;
+                	 start_row+=11;
+                	 rowIndex+=11;
                 	 colIndex=1;
                  }
                  JFreeChart chart = chartMap.get(qTypeName);
@@ -1099,7 +1170,7 @@ public class Generating_Report {
 
                  // Create the picture
                  XSSFPicture picture = drawing.createPicture(anchor, pictureIdx);
-                 picture.resize(0.5); // Adjust the scale factor as needed
+                 picture.resize(0.7); // Adjust the scale factor as needed
 
                  // Increment colIndex for the next chart
                  colIndex += 3;
@@ -1359,6 +1430,12 @@ public class Generating_Report {
 			//workbook.close();
 			if(islastSet)exportToPdf(pdfFilePath);
 			islastSet=true;
+//			if(ind%100==0 && ind!=0) {
+//				workbook.removeSheetAt(sheetIndex);
+//				workbook.write(fileOut);
+//				islastSet=false;
+//			}
+//			fileOut.close();
 		}
 		catch(Exception e)
 		{
@@ -1504,6 +1581,7 @@ public class Generating_Report {
 
         int index = (int) Math.ceil(percentile * marks.size()) - 1;
         double percentileValue = marks.get(index);
+        total_marks_per_80+=percentileValue;
 
         Map<String, Double> result = new HashMap<>();
         result.put(subject + "_80th_percentile", percentileValue);
@@ -1717,5 +1795,24 @@ public class Generating_Report {
             }
         }
         return false; // The range is not merged
+    }
+    private static void setAllStyles(XSSFWorkbook workbook) {
+    	blackColor = new XSSFColor(new Color(0, 0, 0), null);
+		style = createCellStyle(workbook, true, HorizontalAlignment.CENTER, BorderStyle.THIN, blackColor, null, null);
+		localHeadingStyle = createCellStyle(workbook, true, HorizontalAlignment.CENTER, null, null, null, null);
+        greenColor = new XSSFColor(new Color(0, 128, 0), null);
+        styleWithGreenBorder = createCellStyle(workbook, true, HorizontalAlignment.CENTER, BorderStyle.MEDIUM, greenColor, null, null);
+        redColor = new XSSFColor(new Color(255, 0, 0), null);
+        styleWithRedBorder = createCellStyle(workbook, true, HorizontalAlignment.CENTER, BorderStyle.MEDIUM, redColor, null, null);
+        yellowColor = new XSSFColor(new Color(255, 255, 0), null);
+        styleWithYellowBorder = createCellStyle(workbook, true, HorizontalAlignment.CENTER, BorderStyle.MEDIUM, yellowColor, null, null);
+        mainheadingGreenColor = new XSSFColor(new Color(39, 78, 19), null);
+        whiteColor = new XSSFColor(new Color(255, 255, 255), null);
+        headingGreenColor = new XSSFColor(new Color(212, 228, 206), null);
+        styleMainHeading = createCellStyle(workbook, true, HorizontalAlignment.CENTER, null, null, whiteColor, mainheadingGreenColor);
+        styleHeading = createCellStyle(workbook, true, HorizontalAlignment.CENTER, null, null, blackColor, headingGreenColor);
+        headingBlueColor = new XSSFColor(new Color(207, 226, 243), null);
+        blueStyleHeading = createCellStyle(workbook, true, HorizontalAlignment.CENTER, null, null, blackColor, headingBlueColor);
+        return;
     }
 }

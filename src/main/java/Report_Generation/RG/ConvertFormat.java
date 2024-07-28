@@ -195,6 +195,7 @@ public class ConvertFormat{
 	        
 	        file.close();
 	        workbook.close();
+	        System.gc();
 			
 		} catch (Exception e) {
 			e.printStackTrace();

@@ -108,6 +108,7 @@ public class SetBTestData {
 //            insertDataIntoBigQuery(bigquery, data);
             file.close();
             workbook.close();
+            System.gc();
             return "DONE";
         } catch (Exception e) {
             return "Error: " + e.getMessage();
