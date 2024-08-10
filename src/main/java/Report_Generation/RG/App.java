@@ -12,6 +12,7 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JTextField;
 import javax.swing.SwingWorker;
+import javax.swing.JPanel;
 
 
 public class App {
@@ -110,55 +111,19 @@ public class App {
 	            }
 	        }
 	    });
-	    
-//	    btnBrowseReportIn.addActionListener(new ActionListener() {
-//	        public void actionPerformed(ActionEvent e) {
-//	            int result = fileChooser.showOpenDialog(frame);
-//	            if (result == JFileChooser.APPROVE_OPTION) {
-//	                File selectedFile = fileChooser.getSelectedFile();
-//	                txtReportIn.setText(selectedFile.getAbsolutePath());
-//	            }
-//	        }
-//	    });
 		
 		btnRead.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                //String fileName = txtAddressOfResult.getText().replace("\"", "");
-//            	btnRead.setEnabled(false);
-//                //String fileName="C:\\Users\\adity\\Downloads\\For Aditya sir (1).xlsx".replace("\"","");
-//            	String fileName = txtAddressOfResult.getText().replace("\"", "");
-//            	System.out.println("File path: " + fileName); // Debugging statement
-//                //reading_excel reader = new reading_excel();
-//                //reader.read(fileName);
-//            	updateProgress("Reading and calculating results for students");
-//                SetBTestData.setBTestData(fileName);
-//                System.out.println(SetBTestData.BTestData);
-//                ConvertFormat.ConvertFormat(fileName);
-//                
-//                //String fileNameReportIn = txtReportIn.getText().replace("\"", "");
-//               //String fileNameReportIn="\"C:\\Users\\adity\\Downloads\\Copy of PCM Logic and Coding..xlsx\"".replace("\"","");
-//                String fileNameReportIn = txtReportIn.getText().replace("\"", "");
-//                Generating_Report.adjusting_data(fileNameReportIn);
-//                updateProgress("Results are in memory. Please check the sample report in excel file and do changes if required. Pleae make sure to SAVE after changes. After all this please click Create Reports button.");
             	btnRead.setEnabled(false);
                 new ReadWorker(txtAddressOfResult.getText()).execute();
             }
         });
 		btnCreateReports.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-//                try {
-//					Generating_Report.createReports();
-//				} catch (Exception e1) {
-//					// TODO Auto-generated catch block
-//					e1.printStackTrace();
-//				}
             	btnCreateReports.setEnabled(false);
                 new CreateReportsWorker().execute();
-                //btnCreateReports.setEnabled(true);
             }
         });
-		//"C:\Users\adity\Downloads\For Aditya sir.xlsx"
-		//C:\Users\adity\Downloads\For Aditya sir.xlsx
 
 	}
 	public static void updateProgress(String text) {
@@ -201,7 +166,7 @@ public class App {
 
         @Override
         protected Void doInBackground() throws Exception {
-            Generating_Report.createReports();
+            Generating_Report.createReportsPdf();
             return null;
         }
 

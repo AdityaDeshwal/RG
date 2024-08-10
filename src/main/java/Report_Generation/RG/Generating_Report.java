@@ -3,13 +3,20 @@ package Report_Generation.RG;
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.awt.Color;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
+import org.jfree.chart.axis.NumberTickUnit;
+import org.jfree.chart.axis.ValueAxis;
 import org.jfree.chart.plot.CategoryPlot;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.renderer.category.StackedBarRenderer;
+import org.jfree.chart.title.LegendTitle;
+import org.jfree.chart.title.TextTitle;
+import org.jfree.chart.ui.RectangleEdge;
+import org.jfree.chart.ui.RectangleInsets;
 import org.jfree.data.category.DefaultCategoryDataset;
 import org.jfree.ui.RefineryUtilities;
 import org.openxmlformats.schemas.drawingml.x2006.chart.CTPlotArea;
@@ -24,7 +31,30 @@ import org.openxmlformats.schemas.spreadsheetml.x2006.main.impl.WorkbookDocument
 import com.fasterxml.jackson.databind.ser.std.StdKeySerializers.Default;
 import com.graphbuilder.math.func.LnFunction;
 
+import com.itextpdf.text.Document;
+import com.itextpdf.text.DocumentException;
+import com.itextpdf.text.Element;
+import com.itextpdf.text.FontFactory;
+import com.itextpdf.text.Image;
+import com.itextpdf.text.Paragraph;
+import com.itextpdf.text.Phrase;
+import com.itextpdf.text.Rectangle;
+import com.itextpdf.text.Section;
+import com.itextpdf.text.pdf.DeviceNColor;
+import com.itextpdf.text.pdf.PdfContentByte;
+import com.itextpdf.text.pdf.PdfPCell;
+import com.itextpdf.text.pdf.PdfPTable;
+import com.itextpdf.text.pdf.PdfPageEventHelper;
+import com.itextpdf.text.pdf.PdfWriter;
+import com.itextpdf.text.BaseColor;
+import com.itextpdf.text.Chapter;
+
+import org.jfree.chart.axis.CategoryAxis;
+import org.jfree.chart.axis.NumberAxis;
+
+
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -45,8 +75,10 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.stream.Collectors;
 
+import javax.imageio.ImageIO;
 import javax.xml.namespace.QName;
 
 import org.apache.commons.math3.analysis.function.Max;
@@ -68,6 +100,7 @@ import org.apache.poi.xddf.usermodel.chart.XDDFDataSource;
 import org.apache.poi.xddf.usermodel.chart.XDDFDataSourcesFactory;
 import org.apache.poi.xddf.usermodel.chart.XDDFNumericalDataSource;
 import org.apache.poi.xddf.usermodel.chart.XDDFValueAxis;
+import org.apache.poi.xddf.usermodel.text.TextAlignment;
 import org.apache.poi.xssf.usermodel.XSSFCellStyle;
 import org.apache.poi.xssf.usermodel.XSSFChart;
 import org.apache.poi.xssf.usermodel.XSSFClientAnchor;
@@ -86,6 +119,8 @@ import org.apache.xmlbeans.XmlObject;
 import org.apache.xmlbeans.XmlOptions;
 import org.apache.xmlbeans.impl.common.XmlStreamUtils;
 import org.checkerframework.checker.units.qual.min;
+
+
 
 
 
@@ -159,6 +194,8 @@ public class Generating_Report {
 	                                joinedData.put("q_type", q.get(6));
 	                                joinedData.put("set_no", q.get(2));
 	                                joinedData.put("q_no", q.get(4));
+//	                                joinedData.put("is_best5", q.get(7));
+//	                                System.out.println(q.get(7));
 	                            });
 
 	                    // Join with student_info_arr
@@ -309,7 +346,7 @@ public class Generating_Report {
 //	        // Step 4: Calculate percentages
 	        t2.clear();
 	        System.gc();
-	        
+	        //System.out.println(t1);
 	        Map<String, Map<String, Map<String, Map<String, Object>>>> groupedData = t1.stream()
 	                .collect(Collectors.groupingBy(
 	                    e -> e.get("student_roll_no").toString(),
@@ -321,6 +358,9 @@ public class Generating_Report {
 	                                Collectors.toList(),
 	                                list -> {
 	                                    int totalQs = list.size();
+//	                                    boolean isBest5 = list.stream().anyMatch(entry -> Boolean.TRUE.equals(entry.get("is_best5")));
+//	                                    //System.out.println(isBest5);
+//	                                    if(isBest5)totalQs=5;
 	                                    long correctCount = list.stream().filter(entry -> entry.get("correctness").equals("CORRECT")).count();
 	                                    long incorrectCount = list.stream().filter(entry -> entry.get("correctness").equals("NOT CORRECT")).count();
 	                                    long attemptedCount = list.stream().filter(entry -> !entry.get("correctness").equals("NOT ANSWERED")).count();
@@ -640,48 +680,936 @@ public class Generating_Report {
 	                        ques_analysis.get(subject).put(setNo, sortedQuestions);
 	                    }
 	                }
-
-	                // Print or use the ques_analysis map with sorted questions
-//	                System.out.println("Ques Analysis with Sets and Sorted Questions:");
-	                System.out.println(ques_analysis);
-
-
-	                // Print final output for verification
-	                
-//	                System.out.println("Averages:");
-//	                for (Map.Entry<String, Double> entry : averages.entrySet()) {
-//	                    System.out.println(entry.getKey() + ": " + entry.getValue());
-//	                }
-//
-//	                // Print information from percentiles map
-//	                System.out.println("\nPercentiles:");
-//	                for (Map.Entry<String, Double> entry : percentiles.entrySet()) {
-//	                    System.out.println(entry.getKey() + ": " + entry.getValue());
-//	                }
-//	                System.out.println("Number of columns in one row: " + finalOutput.get(0).size());
-//	                System.out.println("Percentiles:");
-//	                printMap(percentiles);
-//
-//	                System.out.println("\nAverages:");
-//	                printMap(averages);
-//
-//	                System.out.println("\nNegative Averages:");
-//	                printMap(neg_averages);
-	               // finalOutput.forEach(System.out::println);
 	                workbook.close();
-//	                for(int i=0;i<finalOutput.size();i++) {
-//	                	populateTrialData(excelFilePath, i);
-//	                }
+//	                
 	                System.gc();
-	                createWorkbook();
-//	                populateTrialData(excelFilePath, 145); 
-	                //populateTrialData(excelFilePath, 15);
-	               
+	                createFolder();	               
 	           
 		}
 		catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+	
+	public static void createFolder() {
+		String folderName = BTest_Name;
+		 String desktopPath = getDesktopPath();
+	        if (desktopPath == null) {
+	            throw new IllegalStateException("Desktop path could not be found");
+	        }
+
+	        // Create the new folder path
+	        Path newFolderPath = Paths.get(desktopPath, folderName);
+
+	        try {
+	            // Create the folder if it doesn't exist
+	            if (!Files.exists(newFolderPath)) {
+	                Files.createDirectory(newFolderPath);
+	            }
+	            System.out.println("Folder created at: " + newFolderPath.toString());
+	            folderFilePath = newFolderPath.toString();
+	        } catch (IOException e) {
+	            e.printStackTrace();
+	        }
+	}
+	
+	public static void createReportsPdf() {
+		int total=finalOutput.size();
+		for(int i=0;i<total;i++) {
+			long stTime = System.currentTimeMillis();
+        	directPdf(i);
+        	App.updateProgress(i+1 + "/" + total);
+        	System.out.println(i+1 +"-" +(System.currentTimeMillis()-stTime));
+        }
+	}
+	public static List<String> quotes=new ArrayList<>();
+	static {
+		quotes.add("“A person who never made a mistake never tried anything new.” —Albert Einstein");
+		quotes.add("“Discipline will take you places motivation can't.” –Anonymus");
+		quotes.add("“Procrastination makes easy things hard and hard things harder.” —Mason Cooley");
+		quotes.add("“The best way to predict your future is to create it.” —Abraham Lincoln");
+		quotes.add("“He who asks a question is a fool for five minutes; he who does not ask a question remains a fool forever.” —Chinese Proverb");
+		quotes.add("“The biggest room in the world is the room for improvement.” -Helmut Schmidt");
+		quotes.add("“End is not the end if fact E.N.D. Means “Efforts Never Dies. – Dr. A.P.J. Abdul Kalam");
+		quotes.add("“If you get tired, learn to rest not to quit.” – Banksy");
+	}
+	
+	public static void directPdf(Integer ind) { 
+		Map<String, Object> currdata=finalOutput.get(ind);
+
+		String pdfFilePath=folderFilePath + "\\" + currdata.get("student_roll_no") + "_" + BTest_Name + ".pdf";
+		
+		Random random = new Random();
+		List<String> currQuotes=new ArrayList<>(quotes);
+		try {
+            // Initialize PDF writer and document
+            Document document = new Document();
+            PdfWriter writer = PdfWriter.getInstance(document, new FileOutputStream(pdfFilePath));
+        
+            
+           // String footerText1 = "Bakliwal Tutorials ( Where BesT teachers meet BesT students )";
+            
+            final com.itextpdf.text.Font footerFont = FontFactory.getFont(FontFactory.TIMES_ITALIC, 8,BaseColor.BLACK);
+
+            // Register the page event for footer and page numbers
+            writer.setPageEvent(new PdfPageEventHelper() {
+                @Override
+                public void onEndPage(PdfWriter writer, Document document) {
+                    PdfPTable footer = new PdfPTable(1);
+                    try {
+                    	int randomIndex = random.nextInt(currQuotes.size());
+                        String footerText1 = currQuotes.get(randomIndex);
+                        currQuotes.remove(randomIndex);
+                        // Set the total width of the table to match the page width
+                        footer.setTotalWidth(document.getPageSize().getWidth() - document.leftMargin() - document.rightMargin());
+                        footer.setLockedWidth(true);
+
+                        // Add the footer text and page number
+                        PdfPCell cell = new PdfPCell(new Paragraph(writer.getPageNumber() + "\n\n" + footerText1 , footerFont));
+                        cell.setBorder(Rectangle.NO_BORDER);
+                        cell.setBorderWidthTop(1f);
+                        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+                        cell.setVerticalAlignment(Element.ALIGN_BOTTOM);
+                        footer.addCell(cell);
+
+                        // Write the footer to the document
+                        footer.writeSelectedRows(0, -1, document.leftMargin(), document.bottomMargin(), writer.getDirectContent());
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+            
+            document.open();
+            
+            Chapter chapter_mark_analysis = new Chapter(1);
+            chapter_mark_analysis.setNumberDepth(0);
+           
+            InputStream logoStream = Generating_Report.class.getClassLoader().getResourceAsStream("Images/Bakliwal_Logo.png");
+            byte[] logoBytes = IOUtils.toByteArray(logoStream);
+            Image logoImage = Image.getInstance(logoBytes);
+            logoImage.setAbsolutePosition(20, document.top()-20); // Positioning the image on the page
+            logoImage.scaleToFit(45, 45);
+            //chapter_mark_analysis.add(logoImage);
+            
+            float[] columnWidths_mainHeadingTable = {15f,70f,15f};
+            PdfPTable main_heading_table = new PdfPTable(columnWidths_mainHeadingTable);
+            main_heading_table.setWidthPercentage(100); 
+            
+            PdfPCell logoCell=new PdfPCell();
+            logoCell.addElement(logoImage);
+            logoCell.setBorderColor(BaseColor.BLACK);
+            logoCell.setBackgroundColor(BaseColor.BLACK);
+            main_heading_table.addCell(logoCell);
+            
+            PdfPCell main_title = new PdfPCell(new Paragraph("Bakliwal Tutorials",
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 32, BaseColor.WHITE)));
+            main_title.setBackgroundColor(BaseColor.BLACK);
+            main_title.setHorizontalAlignment(Element.ALIGN_CENTER);
+            main_title.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            main_title.setBorderColor(BaseColor.BLACK);
+            main_title.setPaddingBottom(5);
+            main_heading_table.addCell(main_title);
+            
+            PdfPCell emptyCell=new PdfPCell();
+            emptyCell.setBackgroundColor(BaseColor.BLACK);
+            emptyCell.setBorderColor(BaseColor.BLACK);
+            main_heading_table.addCell(emptyCell);
+            
+            chapter_mark_analysis.add(main_heading_table);
+            chapter_mark_analysis.add(new Paragraph("\n"));
+            
+            PdfPTable secondary_heading_table = new PdfPTable(1);
+            secondary_heading_table.setWidthPercentage(100);
+            
+            PdfPCell student_info = new PdfPCell(new Paragraph(currdata.get("student_roll_no") + " - " + currdata.get("name"),
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12, BaseColor.WHITE)));
+            student_info.setBackgroundColor(new BaseColor(0, 0, 128));
+            student_info.setHorizontalAlignment(Element.ALIGN_CENTER);
+            student_info.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            student_info.setBorderColor(new BaseColor(0, 0, 128));
+            student_info.setPaddingBottom(2);
+            secondary_heading_table.addCell(student_info);
+            
+            PdfPCell test_info = new PdfPCell(new Paragraph("Detailed Analysis for " + BTest_Name + " conducted on " + test_date,
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12, BaseColor.WHITE)));
+            test_info.setBackgroundColor(new BaseColor(0, 0, 128));
+            test_info.setHorizontalAlignment(Element.ALIGN_CENTER);
+            test_info.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            test_info.setBorderColor(new BaseColor(0, 0, 128));
+            test_info.setPaddingBottom(5);
+            secondary_heading_table.addCell(test_info);
+           
+            chapter_mark_analysis.add(secondary_heading_table);
+            chapter_mark_analysis.add(new Paragraph("\n"));
+            
+            PdfPTable local_heading_table_1 = new PdfPTable(1);
+            local_heading_table_1.setWidthPercentage(100);
+            
+            PdfPCell marks_analysis_heading = new PdfPCell(new Paragraph("Marks Analysis",
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, BaseColor.BLACK)));
+            marks_analysis_heading.setBackgroundColor(new BaseColor(207, 226, 243));
+            marks_analysis_heading.setHorizontalAlignment(Element.ALIGN_CENTER);
+            marks_analysis_heading.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            marks_analysis_heading.setBorderColor(new BaseColor(0, 0, 128));
+            marks_analysis_heading.setPaddingBottom(3);
+            local_heading_table_1.addCell(marks_analysis_heading);
+            
+            Section section_mark_1 = chapter_mark_analysis.addSection(new Paragraph(""));
+            section_mark_1.setNumberDepth(0);
+            section_mark_1.add(local_heading_table_1);
+            section_mark_1.add(new Paragraph("\n"));
+
+            // Add a table for Marks Analysis
+            
+            float[] columnWidths = {10f, 9f, 9f, 9f, 9f, 9f, 9f, 9f, 9f, 9f};
+            PdfPTable table = new PdfPTable(columnWidths);
+            table.setWidthPercentage(100);
+            com.itextpdf.text.Font defaultFont = FontFactory.getFont(FontFactory.HELVETICA, 8, BaseColor.BLACK);
+            float minHeight = 20f;
+            // Add table headers
+            PdfPCell cell = new PdfPCell(new Paragraph("Subject", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, BaseColor.BLACK)));
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            cell.setMinimumHeight(minHeight);
+            cell.setBackgroundColor(new BaseColor(207, 226, 243));
+            table.addCell(cell);
+
+            cell = new PdfPCell(new Paragraph("Marks", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, BaseColor.BLACK)));
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            cell.setMinimumHeight(minHeight);
+            cell.setBackgroundColor(new BaseColor(207, 226, 243));
+            table.addCell(cell);
+            cell = new PdfPCell(new Paragraph("Marks/ Avg", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, BaseColor.BLACK)));
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            cell.setMinimumHeight(minHeight);
+            cell.setBackgroundColor(new BaseColor(207, 226, 243));
+            table.addCell(cell);
+            cell = new PdfPCell(new Paragraph("Marks/ 80 percentile", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, BaseColor.BLACK)));
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            cell.setMinimumHeight(minHeight);
+            cell.setBackgroundColor(new BaseColor(207, 226, 243));
+            table.addCell(cell);
+            cell = new PdfPCell(new Paragraph("Positive Marks", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, BaseColor.BLACK)));
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            cell.setMinimumHeight(minHeight);
+            cell.setBackgroundColor(new BaseColor(207, 226, 243));
+            table.addCell(cell);
+            cell = new PdfPCell(new Paragraph("Negative Marks", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, BaseColor.BLACK)));
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            cell.setMinimumHeight(minHeight);
+            cell.setBackgroundColor(new BaseColor(207, 226, 243));
+            table.addCell(cell);
+            cell = new PdfPCell(new Paragraph("Avg Negative Marks", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, BaseColor.BLACK)));
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            cell.setMinimumHeight(minHeight);
+            cell.setPaddingBottom(2);
+            cell.setBackgroundColor(new BaseColor(207, 226, 243));
+            table.addCell(cell);
+            cell = new PdfPCell(new Paragraph("Total Questions", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, BaseColor.BLACK)));
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            cell.setMinimumHeight(minHeight);
+            cell.setBackgroundColor(new BaseColor(207, 226, 243));
+            table.addCell(cell);
+            cell = new PdfPCell(new Paragraph("Attempted", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, BaseColor.BLACK)));
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            cell.setMinimumHeight(minHeight);
+            cell.setBackgroundColor(new BaseColor(207, 226, 243));
+            table.addCell(cell);
+            cell = new PdfPCell(new Paragraph("Correct", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, BaseColor.BLACK)));
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            cell.setMinimumHeight(minHeight);
+            cell.setBackgroundColor(new BaseColor(207, 226, 243));
+            table.addCell(cell);
+           
+            double total_marks = 0;
+            double total_marks_per_avg = 0;
+            double total_positive_marks = 0;
+            double total_negative_marks = 0;
+            double total_neg_avg = 0;
+            int total_qs = 0;
+            int total_attempted = 0;
+            int total_correct = 0;
+            DecimalFormat df = new DecimalFormat("#.##");
+
+            // Add rows
+            List<Map<String, Object>> subjectsList = (List<Map<String, Object>>) BTest_data.get("subjects");
+            for(int i=0;i<subjectsList.size();i++) {
+            	 Map<String, Object> subj_data=subjectsList.get(i);
+            	 String subj_name=(String) subj_data.get("subject_name");
+             	String subject_name=subjFullForm.get(subj_name);
+             	
+             	List<Map<String, Object>> qTypes = (List<Map<String, Object>>) subj_data.get("q_types");
+
+                int total_num_qs = qTypes.stream()
+                        .mapToInt(qType -> ((Double) qType.get("num_of_qs")).intValue())
+                        .sum();
+                cell = new PdfPCell(new Paragraph(subject_name, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, BaseColor.BLACK)));
+                cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+                cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                cell.setMinimumHeight(minHeight);
+                cell.setBackgroundColor(new BaseColor(207, 226, 243));
+                table.addCell(cell);
+                
+                Double subj_total_marks = (Double) currdata.get(subj_name + "_total_marks");
+                total_marks += subj_total_marks;
+                Double subj_marks_per_avg = (Double) currdata.get("marks_per_avg_" + subj_name);
+                total_marks_per_avg += subj_marks_per_avg;
+                Double subj_marks_per_80 = (Double) currdata.get("marks_per_80_" + subj_name);
+                
+                cell = new PdfPCell(new Paragraph(String.valueOf(subj_total_marks.intValue()), defaultFont));
+                cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+                cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                cell.setMinimumHeight(minHeight);
+                table.addCell(cell);
+                cell = new PdfPCell(new Paragraph(df.format(subj_marks_per_avg), defaultFont));
+                cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+                cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                cell.setMinimumHeight(minHeight);
+                table.addCell(cell);
+                cell = new PdfPCell(new Paragraph(df.format(subj_marks_per_80), defaultFont));
+                cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+                cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                cell.setMinimumHeight(minHeight);
+                table.addCell(cell);
+
+                Double subj_pos_marks = (Double) currdata.get(subj_name + "_positive_marks");
+                total_positive_marks += subj_pos_marks;
+                Double subj_neg_marks = (Double) currdata.get(subj_name + "_negative_marks");
+                total_negative_marks += subj_neg_marks;
+                Double subj_avg_neg_marks = (Double) neg_averages.get("avg_neg_" + subj_name);
+                total_neg_avg += subj_avg_neg_marks;
+
+                cell = new PdfPCell(new Paragraph(String.valueOf(subj_pos_marks.intValue()), defaultFont));
+                cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+                cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                cell.setMinimumHeight(minHeight);
+                table.addCell(cell);
+                cell = new PdfPCell(new Paragraph(String.valueOf(subj_neg_marks.intValue()), defaultFont));
+                cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+                cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                cell.setMinimumHeight(minHeight);
+                table.addCell(cell);
+                cell = new PdfPCell(new Paragraph(df.format(subj_avg_neg_marks), defaultFont));
+                cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+                cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                cell.setMinimumHeight(minHeight);
+                table.addCell(cell);
+
+                total_qs += total_num_qs;
+                Integer subj_total_attempted = (Integer) currdata.get(subj_name + "_num_attempted");
+                total_attempted += subj_total_attempted;
+                Integer subj_correct = (Integer) currdata.get(subj_name + "_num_correct");
+                total_correct += subj_correct;
+
+                cell = new PdfPCell(new Paragraph(String.valueOf(total_num_qs), defaultFont));
+                cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+                cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                cell.setMinimumHeight(minHeight);
+                table.addCell(cell);
+                cell = new PdfPCell(new Paragraph(String.valueOf(subj_total_attempted), defaultFont));
+                cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+                cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                cell.setMinimumHeight(minHeight);
+                table.addCell(cell);
+                cell = new PdfPCell(new Paragraph(String.valueOf(subj_correct), defaultFont));
+                cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+                cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                cell.setMinimumHeight(minHeight);
+                table.addCell(cell);
+            }
+            
+            double sum_of_averages = averages.values().stream().mapToDouble(Double::doubleValue).sum();
+            cell = new PdfPCell(new Phrase("Total", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, BaseColor.BLACK)));
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            cell.setMinimumHeight(minHeight);
+            cell.setBackgroundColor(new BaseColor(207, 226, 243));
+            table.addCell(cell);
+            cell = new PdfPCell(new Phrase(String.valueOf((int) total_marks), defaultFont));
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            cell.setMinimumHeight(minHeight);
+            table.addCell(cell);
+            cell = new PdfPCell(new Phrase(df.format(total_marks / sum_of_averages), defaultFont));
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            cell.setMinimumHeight(minHeight);
+            table.addCell(cell);
+            cell = new PdfPCell(new Phrase(df.format(total_marks / total_marks_per_80), defaultFont));
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            cell.setMinimumHeight(minHeight);
+            table.addCell(cell);
+            cell = new PdfPCell(new Phrase(String.valueOf((int) total_positive_marks), defaultFont));
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            cell.setMinimumHeight(minHeight);
+            table.addCell(cell);
+            cell = new PdfPCell(new Phrase(String.valueOf((int) total_negative_marks), defaultFont));
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            cell.setMinimumHeight(minHeight);
+            table.addCell(cell);
+            cell = new PdfPCell(new Phrase(df.format(total_neg_avg), defaultFont));
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            cell.setMinimumHeight(minHeight);
+            table.addCell(cell);
+            cell = new PdfPCell(new Phrase(String.valueOf(total_qs), defaultFont));
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            cell.setMinimumHeight(minHeight);
+            table.addCell(cell);
+            cell = new PdfPCell(new Phrase(String.valueOf(total_attempted), defaultFont));
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            cell.setMinimumHeight(minHeight);
+            table.addCell(cell);
+            cell = new PdfPCell(new Phrase(String.valueOf(total_correct), defaultFont));
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            cell.setMinimumHeight(minHeight);
+            table.addCell(cell);
+            //document.add(table);
+            section_mark_1.add(table);
+            section_mark_1.add(new Paragraph("\n"));
+           
+            Section section_mark_2 = chapter_mark_analysis.addSection(new Paragraph(""));
+            section_mark_2.setNumberDepth(0);
+            
+            PdfPTable local_heading_table_2 = new PdfPTable(1);
+            local_heading_table_2.setWidthPercentage(100);
+            
+            PdfPCell Question_wise_heading = new PdfPCell(new Paragraph("Question-Wise Analysis",
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, BaseColor.BLACK)));
+            Question_wise_heading.setBackgroundColor(new BaseColor(207, 226, 243));
+            Question_wise_heading.setHorizontalAlignment(Element.ALIGN_CENTER);
+            Question_wise_heading.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            Question_wise_heading.setBorderColor(new BaseColor(0, 0, 128));
+            Question_wise_heading.setPaddingBottom(3);
+            local_heading_table_2.addCell(Question_wise_heading);
+            
+            section_mark_2.add(local_heading_table_2);
+            section_mark_2.add(new Paragraph("\n"));
+            
+            PdfPTable Imgtable = new PdfPTable(2);
+            Imgtable.setWidthPercentage(100);
+            
+            
+            Map<String, DefaultCategoryDataset> datasetMap= new HashMap<>();
+
+            for (Map<String, Object> subject_data : subjectsList) {
+                String subjectName = (String) subject_data.get("subject_name");
+                List<Map<String, Object>> qTypes = (List<Map<String, Object>>) subject_data.get("q_types");
+
+                for (Map<String, Object> qType : qTypes) {
+                    String qTypeName = (String) qType.get("q_type_name");
+                    //PHY_MCO_attempted_perc
+
+                    double attemptedPercentage = (double) currdata.get(subjectName + "_" + qTypeName + "_attempted_perc"); // Example: 55% attempted
+                    double correctPercentage = (double) currdata.get(subjectName + "_" + qTypeName + "_correct_perc"); // Example: 40% correct
+                    double incorrectPercentage = (double) currdata.get(subjectName + "_" + qTypeName + "_incorrect_perc"); // Example: 15% partially correct
+
+                    DefaultCategoryDataset dataset = datasetMap.computeIfAbsent(qTypeName, k -> new DefaultCategoryDataset());
+
+                    dataset.addValue(correctPercentage, "Correct", subjectName);
+                    dataset.addValue(incorrectPercentage, "Incorrect", subjectName);
+                    double partiallyCorrectPercentage = attemptedPercentage - (correctPercentage + incorrectPercentage);
+                    if (partiallyCorrectPercentage < 0) {
+                        partiallyCorrectPercentage = 0;
+                    }
+                    dataset.addValue(partiallyCorrectPercentage, "Partially Correct", subjectName);
+
+                }
+            }
+            
+            Map<String, JFreeChart> chartMap = new HashMap<>();
+
+            for (String qTypeName : datasetMap.keySet()) {
+                DefaultCategoryDataset dataset = datasetMap.get(qTypeName);
+
+                JFreeChart chart = ChartFactory.createStackedBarChart(
+                        qTypeName + " Report",
+                        "Subjects",
+                        "Percentage (%)",
+                        dataset,
+                        PlotOrientation.VERTICAL,
+                        true,
+                        true,
+                        false
+                );
+
+                CategoryPlot plot = (CategoryPlot) chart.getPlot();
+
+                // Set axis range with padding and tick unit
+                ValueAxis rangeAxis = plot.getRangeAxis();
+                rangeAxis.setRange(0.0, 105.0); // Adding extra space above 100
+                if (rangeAxis instanceof NumberAxis) {
+                    NumberAxis numberAxis = (NumberAxis) rangeAxis;
+                    numberAxis.setTickUnit(new NumberTickUnit(20.0));
+                }
+
+                // Customize chart appearance
+                chart.setBackgroundPaint(Color.WHITE);
+                plot.setBackgroundPaint(Color.LIGHT_GRAY);
+                plot.setDomainGridlinePaint(Color.BLACK);
+                plot.setRangeGridlinePaint(Color.BLACK);
+
+                // Set colors for different series
+                StackedBarRenderer renderer = (StackedBarRenderer) plot.getRenderer();
+                renderer.setSeriesPaint(0, Color.GREEN); // Correct
+                renderer.setSeriesPaint(1, Color.RED);   // Incorrect
+                renderer.setSeriesPaint(2, Color.YELLOW); // Partially Correct
+
+                // Set title font size
+                //chart.setTitle(new TextTitle(qTypeName + " Report", new java.awt.Font("Arial", java.awt.Font.BOLD, 36)));
+                TextTitle title = new TextTitle(qTypeName + " Report", new java.awt.Font("Arial", java.awt.Font.BOLD, 44));
+                //title.setHorizontalAlignment(HorizontalAlignment.CENTER);
+
+                // Add padding to the title to move it down
+                title.setPadding(0, 70, 0, 0);
+
+                chart.setTitle(title);
+
+
+                // Set axis label font size
+                plot.getDomainAxis().setLabelFont(new java.awt.Font("Arial", java.awt.Font.BOLD, 36));
+                plot.getRangeAxis().setLabelFont(new java.awt.Font("Arial", java.awt.Font.BOLD, 36));
+
+                // Set tick label font size
+                plot.getDomainAxis().setTickLabelFont(new java.awt.Font("Arial", java.awt.Font.PLAIN, 36));
+                plot.getRangeAxis().setTickLabelFont(new java.awt.Font("Arial", java.awt.Font.PLAIN, 36));
+                
+                plot.setInsets(new RectangleInsets(10, 10, 20, 10));
+
+
+                // Set legend font size
+                //LegendTitle legend = chart.getLegend();
+                LegendTitle legend = chart.getLegend();
+                legend.setPosition(RectangleEdge.BOTTOM);
+                legend.setPadding(0, 90, 0, 0);
+                legend.setItemFont(new java.awt.Font("Arial", java.awt.Font.PLAIN, 36));
+//                if (legend != null) {
+//                	legend.setItemFont(new java.awt.Font("Arial", java.awt.Font.PLAIN, 36));
+//                }
+
+                // Generate a larger image for higher quality
+                int maxWidth = 1100;  // Maximum width in pixels
+                int maxHeight = 800; // Maximum height in pixels
+
+                // Create ByteArrayOutputStream for image
+                ByteArrayOutputStream chartOut = new ByteArrayOutputStream();
+
+                // Write chart as PNG with a high DPI and let chart handle aspect ratio
+                ChartUtils.writeChartAsPNG(chartOut, chart, maxWidth, maxHeight);
+
+                // Create Image instance
+                Image chartImage = Image.getInstance(chartOut.toByteArray());
+
+                // Adjust image alignment and scale factor
+                chartImage.setAlignment(Element.ALIGN_CENTER);
+                float originalWidth = chartImage.getScaledWidth();
+                float originalHeight = chartImage.getScaledHeight();
+
+                // Desired dimensions
+                float targetWidth = 200; // Adjust target width as needed
+                float targetHeight = 200; // Adjust target height as needed
+
+                // Calculate scaling percentages
+                float widthPercentage = (targetWidth / originalWidth) * 100;
+                float heightPercentage = (targetHeight / originalHeight) * 100;
+
+                // Use the smaller percentage to fit the image within the target dimensions
+                float scalingPercentage = Math.min(widthPercentage, heightPercentage);
+
+                // Scale the image
+                chartImage.scalePercent(scalingPercentage);
+
+                // Add image to the document
+                PdfPCell currImage= new PdfPCell(chartImage);
+                currImage.setBorder(PdfPCell.NO_BORDER);
+                currImage.setPaddingBottom(15);
+                currImage.setPaddingTop(15);
+                currImage.setPaddingLeft(30);
+                currImage.setPaddingRight(30);
+                
+                Imgtable.addCell(currImage);
+            }
+            if(datasetMap.size()%2!=0) {
+            	PdfPCell extraCell=new PdfPCell(new Paragraph(""));
+            	extraCell.setBorder(PdfPCell.NO_BORDER);
+            	Imgtable.addCell(extraCell);
+            }
+            section_mark_2.add(Imgtable);
+            document.add(chapter_mark_analysis);
+            
+            Chapter chapter_5_must = new Chapter(2);
+            chapter_5_must.setNumberDepth(0);
+            
+            Section section_5must_1 = chapter_5_must.addSection(new Paragraph(""));
+            section_5must_1.setNumberDepth(0);
+         
+            PdfPTable local_heading_table_3 = new PdfPTable(1);
+            local_heading_table_3.setWidthPercentage(100);
+            
+            PdfPCell Must_attempt_heading = new PdfPCell(new Paragraph("5 Must Attempt Questions for Each Subject",
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, BaseColor.BLACK)));
+            Must_attempt_heading.setBackgroundColor(new BaseColor(207, 226, 243));
+            Must_attempt_heading.setHorizontalAlignment(Element.ALIGN_CENTER);
+            Must_attempt_heading.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            Must_attempt_heading.setBorderColor(new BaseColor(0, 0, 128));
+            Must_attempt_heading.setPaddingBottom(3);
+            local_heading_table_3.addCell(Must_attempt_heading);
+            
+            section_5must_1.add(local_heading_table_3);
+            section_5must_1.add(new Paragraph("\n"));
+            
+            minHeight=15f;
+            
+            PdfPTable must5_table = new PdfPTable(2);
+            must5_table.setWidthPercentage(100);
+            
+            String set_no = (String) currdata.get("set_no");
+
+            for (int i = 0; i < subjectsList.size(); i++) {
+                Map<String, Object> subj_data = subjectsList.get(i);
+                String subj_name = (String) subj_data.get("subject_name");
+                String subject_name = subjFullForm.get(subj_name);
+                
+                PdfPTable subj_heading_table = new PdfPTable(1);
+                //subj_heading_table.setWidthPercentage(100);
+                
+                PdfPCell subj_heading = new PdfPCell(new Paragraph(subject_name,
+                        FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, BaseColor.WHITE)));
+                subj_heading.setBackgroundColor(new BaseColor(0, 0, 128));
+                subj_heading.setHorizontalAlignment(Element.ALIGN_CENTER);
+                subj_heading.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                subj_heading.setBorder(PdfPCell.NO_BORDER);
+                subj_heading.setPaddingBottom(3);
+                subj_heading_table.addCell(subj_heading);
+                
+                PdfPTable table_5ques = new PdfPTable(3);
+                
+                PdfPCell cell1 = new PdfPCell(new Phrase("Question Number", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, BaseColor.BLACK)));
+                cell1.setBackgroundColor(new BaseColor(207, 226, 243));
+                cell1.setHorizontalAlignment(Element.ALIGN_CENTER);
+                cell1.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                cell1.setMinimumHeight(minHeight);
+                table_5ques.addCell(cell1);
+
+                PdfPCell cell2 = new PdfPCell(new Phrase("Attempted Percent", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, BaseColor.BLACK)));
+                cell2.setBackgroundColor(new BaseColor(207, 226, 243));
+                cell2.setHorizontalAlignment(Element.ALIGN_CENTER);
+                cell2.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                cell2.setMinimumHeight(minHeight);
+                table_5ques.addCell(cell2);
+
+                PdfPCell cell3 = new PdfPCell(new Phrase("Correct Percent", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, BaseColor.BLACK)));
+                cell3.setBackgroundColor(new BaseColor(207, 226, 243));
+                cell3.setHorizontalAlignment(Element.ALIGN_CENTER);
+                cell3.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                cell3.setMinimumHeight(minHeight);
+                table_5ques.addCell(cell3);
+
+                Map<String, Map<String, Double>> ques_perc = (ques_analysis.get(subj_name)).get(set_no);
+
+                for (int j = 0; j < Math.min(5, ques_perc.size()); j++) {
+                    String key = new ArrayList<>(ques_perc.keySet()).get(j);
+                    int q_no = Integer.parseInt(key.split("_")[1]);
+
+                    BaseColor backgroundColor = BaseColor.WHITE;
+                    String ques_status = (String) currdata.get("status_" + subj_name + "_" + q_no);
+                    if ("CORRECT".equals(ques_status)) backgroundColor = new BaseColor(144, 238, 144); // Light green
+                    else if ("NOT CORRECT".equals(ques_status)) backgroundColor = new BaseColor(255, 182, 193); // Light red (pink)
+                    else if ("PARTIALLY CORRECT".equals(ques_status)) backgroundColor = new BaseColor(255, 235, 128); // gold yellow
+
+                    Map<String, Double> stats = ques_perc.get(key);
+                    Double attempted_perc = stats.get("attempted_perc");
+                    Double correct_perc = stats.get("correct_perc");
+
+                    PdfPCell cell4 = new PdfPCell(new Phrase(String.valueOf(q_no), defaultFont));
+                    cell4.setBackgroundColor(backgroundColor);
+                    cell4.setHorizontalAlignment(Element.ALIGN_CENTER);
+                    cell4.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                    cell4.setMinimumHeight(minHeight);
+                    table_5ques.addCell(cell4);
+
+                    PdfPCell cell5 = new PdfPCell(new Phrase(df.format(attempted_perc), defaultFont));
+                    cell5.setBackgroundColor(backgroundColor);
+                    cell5.setHorizontalAlignment(Element.ALIGN_CENTER);
+                    cell5.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                    cell5.setMinimumHeight(minHeight);
+                    table_5ques.addCell(cell5);
+
+                    PdfPCell cell6 = new PdfPCell(new Phrase(df.format(correct_perc), defaultFont));
+                    cell6.setBackgroundColor(backgroundColor);
+                    cell6.setHorizontalAlignment(Element.ALIGN_CENTER);
+                    cell6.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                    cell6.setMinimumHeight(minHeight);
+                    table_5ques.addCell(cell6);
+                }
+                PdfPCell currsubjecttable=new PdfPCell();
+                currsubjecttable.addElement(subj_heading_table);
+                currsubjecttable.addElement(table_5ques);
+                currsubjecttable.setPaddingBottom(20);
+                currsubjecttable.setPaddingTop(20);
+                currsubjecttable.setBorder(PdfPCell.NO_BORDER);
+                must5_table.addCell(currsubjecttable);
+            }
+            if(subjectsList.size()%2!=0) {
+            	PdfPCell extraCell=new PdfPCell(new Paragraph("")); 
+            	extraCell.setBorder(PdfPCell.NO_BORDER);
+            	must5_table.addCell(extraCell);
+            }
+            section_5must_1.add(must5_table);
+            document.add(chapter_5_must);
+            
+            Chapter chapter_individual_ques = new Chapter(3);
+            chapter_individual_ques.setNumberDepth(0);
+            //document.add(local_heading_4);
+            
+            Section section_individual_1 = chapter_individual_ques.addSection(new Paragraph(""));
+            section_individual_1.setNumberDepth(0);
+            
+            PdfPTable local_heading_table_4 = new PdfPTable(1);
+            local_heading_table_4.setWidthPercentage(100);
+            
+            PdfPCell individual_ques_heading = new PdfPCell(new Paragraph("Individual Question Wise Analysis",
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, BaseColor.BLACK)));
+            individual_ques_heading.setBackgroundColor(new BaseColor(207, 226, 243));
+            individual_ques_heading.setHorizontalAlignment(Element.ALIGN_CENTER);
+            individual_ques_heading.setVerticalAlignment(Element.ALIGN_MIDDLE);;
+            individual_ques_heading.setBorderColor(new BaseColor(0, 0, 128));
+            individual_ques_heading.setPaddingBottom(3);
+            local_heading_table_4.addCell(individual_ques_heading);
+            
+            section_individual_1.add(local_heading_table_4);
+            section_individual_1.add(new Paragraph("\n"));
+            
+            PdfPTable table_individual = new PdfPTable(2);
+            table_individual.setWidthPercentage(100);
+            
+            
+            for (int i = 0; i < subjectsList.size(); i++) {
+                Map<String, Object> subj_data = subjectsList.get(i);
+                String subj_name = (String) subj_data.get("subject_name");
+                String subject_name = subjFullForm.get(subj_name);
+                List<Map<String, Object>> qTypes = (List<Map<String, Object>>) subj_data.get("q_types");
+
+                int total_num_qs = qTypes.stream()
+                    .mapToInt(qType -> ((Double) qType.get("num_of_qs")).intValue())
+                    .sum();
+
+                PdfPTable table_individual_ques = new PdfPTable(3);
+                
+                PdfPTable subj_heading_table = new PdfPTable(1);
+                PdfPCell subj_heading = new PdfPCell(new Paragraph(subject_name,
+                        FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, BaseColor.WHITE)));
+                subj_heading.setBackgroundColor(new BaseColor(0, 0, 128));
+                subj_heading.setHorizontalAlignment(Element.ALIGN_CENTER);
+                subj_heading.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                subj_heading.setBorder(PdfPCell.NO_BORDER);
+                subj_heading.setPaddingBottom(3);
+                subj_heading_table.addCell(subj_heading);
+            
+                PdfPCell cell1 = new PdfPCell(new Phrase("Question Number", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, BaseColor.BLACK)));
+                cell1.setBackgroundColor(new BaseColor(207, 226, 243));
+                cell1.setHorizontalAlignment(Element.ALIGN_CENTER);
+                cell1.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                cell1.setMinimumHeight(minHeight);
+                table_individual_ques .addCell(cell1);
+
+                PdfPCell cell2 = new PdfPCell(new Phrase("Attempted Percent", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, BaseColor.BLACK)));
+                cell2.setBackgroundColor(new BaseColor(207, 226, 243));
+                cell2.setHorizontalAlignment(Element.ALIGN_CENTER);
+                cell2.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                cell2.setMinimumHeight(minHeight);
+                table_individual_ques .addCell(cell2);
+
+                PdfPCell cell3 = new PdfPCell(new Phrase("Correct Percent", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, BaseColor.BLACK)));
+                cell3.setBackgroundColor(new BaseColor(207, 226, 243));
+                cell3.setHorizontalAlignment(Element.ALIGN_CENTER);
+                cell3.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                cell3.setMinimumHeight(minHeight);
+                table_individual_ques .addCell(cell3);
+
+                for (int j = 1; j <= total_num_qs; j++) {
+
+                    Map<String, Map<String, Double>> ques_perc = (ques_analysis.get(subj_name)).get(set_no);
+                    Map<String, Double> stats = ques_perc.get(subj_name + "_" + j);
+
+                    BaseColor backgroundColor = BaseColor.WHITE;
+                    String ques_status = (String) currdata.get("status_" + subj_name + "_" + j);
+                    if ("CORRECT".equals(ques_status)) backgroundColor = new BaseColor(144, 238, 144); // Light green
+                    else if ("NOT CORRECT".equals(ques_status)) backgroundColor = new BaseColor(255, 182, 193); // Light red (pink)
+                    else if ("PARTIALLY CORRECT".equals(ques_status)) backgroundColor = new BaseColor(255, 235, 128); // Gold yellow
+
+                    Double attempted_perc = stats.get("attempted_perc");
+                    Double correct_perc = stats.get("correct_perc");
+
+                    PdfPCell cell4 = new PdfPCell(new Phrase(String.valueOf(j), defaultFont));
+                    cell4.setBackgroundColor(backgroundColor);
+                    cell4.setHorizontalAlignment(Element.ALIGN_CENTER);
+                    cell4.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                    cell4.setMinimumHeight(minHeight);
+                    table_individual_ques .addCell(cell4);
+
+                    PdfPCell cell5 = new PdfPCell(new Phrase(df.format(attempted_perc), defaultFont));
+                    cell5.setBackgroundColor(backgroundColor);
+                    cell5.setHorizontalAlignment(Element.ALIGN_CENTER);
+                    cell5.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                    cell5.setMinimumHeight(minHeight);
+                    table_individual_ques .addCell(cell5);
+
+                    PdfPCell cell6 = new PdfPCell(new Phrase(df.format(correct_perc), defaultFont));
+                    cell6.setBackgroundColor(backgroundColor);
+                    cell6.setHorizontalAlignment(Element.ALIGN_CENTER);
+                    cell6.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                    cell6.setMinimumHeight(minHeight);
+                    table_individual_ques .addCell(cell6);
+                }
+                PdfPCell currsubjecttable=new PdfPCell();
+                currsubjecttable.addElement(subj_heading_table);
+                currsubjecttable.addElement(table_individual_ques);
+                currsubjecttable.setPaddingBottom(20);
+                currsubjecttable.setPaddingTop(20);
+                currsubjecttable.setBorder(PdfPCell.NO_BORDER);
+                table_individual.addCell(currsubjecttable);
+            }
+            if(subjectsList.size()%2!=0) {
+            	PdfPCell extraCell=new PdfPCell(new Paragraph("")); 
+            	extraCell.setBorder(PdfPCell.NO_BORDER);
+            	table_individual.addCell(extraCell);
+            }
+            section_individual_1.add(table_individual);
+            document.add(chapter_individual_ques);
+            
+            
+            PdfPTable local_heading_table_5 = new PdfPTable(1);
+            local_heading_table_5.setWidthPercentage(100);
+            
+            PdfPCell interpretion_heading = new PdfPCell(new Paragraph("How to Interpret this Analysis",
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, BaseColor.BLACK)));
+            interpretion_heading.setBackgroundColor(new BaseColor(207, 226, 243));
+            interpretion_heading.setHorizontalAlignment(Element.ALIGN_CENTER);
+            interpretion_heading.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            interpretion_heading.setBorderColor(new BaseColor(0, 0, 128));
+            interpretion_heading.setPaddingBottom(3);
+            local_heading_table_5.addCell(interpretion_heading);
+            
+            Chapter chapter_iterpretion = new Chapter(4);
+            chapter_iterpretion.setNumberDepth(0);
+            chapter_iterpretion.add(local_heading_table_5);
+            chapter_iterpretion.add(new Paragraph("\n"));
+            
+         // Load the images
+            InputStream markAnalysisStream = Generating_Report.class.getClassLoader().getResourceAsStream("Images/Mark_Analysis_BTest.jpg");
+            InputStream quesTypeAnalysisStream = Generating_Report.class.getClassLoader().getResourceAsStream("Images/Ques_Type_Analysis.jpg");
+            InputStream mustAttemptAnalysisStream = Generating_Report.class.getClassLoader().getResourceAsStream("Images/5_Must_Attempt.png");
+            
+            // Convert the InputStream to byte array
+            byte[] markAnalysisBytes = IOUtils.toByteArray(markAnalysisStream);
+            byte[] quesTypeAnalysisBytes = IOUtils.toByteArray(quesTypeAnalysisStream);
+            byte[] mustAttemptAnalysisBytes = IOUtils.toByteArray(mustAttemptAnalysisStream);
+
+
+            Section section_interpretion_1 = chapter_iterpretion.addSection(new Paragraph("\n"));
+            section_interpretion_1.setNumberDepth(0);
+            
+            PdfPTable marksImage_heading_table = new PdfPTable(1);
+            marksImage_heading_table.setWidthPercentage(100);
+            
+            PdfPCell heading_mark_analysis = new PdfPCell(new Paragraph("Mark Analysis",
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, BaseColor.BLACK)));
+            heading_mark_analysis.setBackgroundColor(new BaseColor(207, 226, 243));
+            heading_mark_analysis.setHorizontalAlignment(Element.ALIGN_CENTER);
+            heading_mark_analysis.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            heading_mark_analysis.setBorderColor(new BaseColor(0, 0, 128));
+            heading_mark_analysis.setPaddingBottom(3);
+            marksImage_heading_table.addCell(heading_mark_analysis);
+            
+            section_interpretion_1.add(marksImage_heading_table);
+            section_interpretion_1.add(new Paragraph("\n"));
+            
+            Image markAnalysisImage = Image.getInstance(markAnalysisBytes);
+           // markAnalysisImage.setAbsolutePosition(36, 600); // Positioning the image on the page
+            markAnalysisImage.scaleToFit(500, 300);
+            section_interpretion_1.add(markAnalysisImage);
+            section_interpretion_1.add(new Paragraph("\n"));
+            
+            Section section_interpretion_2 = chapter_iterpretion.addSection(new Paragraph(""));
+            section_interpretion_2.setNumberDepth(0);
+            
+            PdfPTable questype_heading_table = new PdfPTable(1);
+            questype_heading_table.setWidthPercentage(100);
+            
+            PdfPCell ques_type_analysis = new PdfPCell(new Paragraph("Question Type Analysis",
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, BaseColor.BLACK)));
+            ques_type_analysis.setBackgroundColor(new BaseColor(207, 226, 243));
+            ques_type_analysis.setHorizontalAlignment(Element.ALIGN_CENTER);
+            ques_type_analysis.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            ques_type_analysis.setBorderColor(new BaseColor(0, 0, 128));
+            ques_type_analysis.setPaddingBottom(3);
+            questype_heading_table.addCell(ques_type_analysis);
+            
+            section_interpretion_2.add(questype_heading_table);
+            section_interpretion_2.add(new Paragraph("\n"));
+
+            // Add the Question Type Analysis image
+            Image quesTypeAnalysisImage = Image.getInstance(quesTypeAnalysisBytes);
+            //quesTypeAnalysisImage.setAbsolutePosition(36, 450); // Positioning the image on the page
+            quesTypeAnalysisImage.scaleToFit(500, 300);
+            section_interpretion_2.add(quesTypeAnalysisImage);
+            section_interpretion_2.add(new Paragraph("\n"));
+            //document.add(quesTypeAnalysisImage);
+
+            // Add another heading before the next image
+            Section section_interpretion_3 = chapter_iterpretion.addSection(new Paragraph(""));
+            section_interpretion_3.setNumberDepth(0);
+            
+            PdfPTable mustAttemptImage_table = new PdfPTable(1);
+            mustAttemptImage_table .setWidthPercentage(100);
+            
+            PdfPCell must_attempt_analysis = new PdfPCell(new Paragraph("5 Must Attempt Questions for Each Subject",
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, BaseColor.BLACK)));
+            must_attempt_analysis.setBackgroundColor(new BaseColor(207, 226, 243));
+            must_attempt_analysis.setHorizontalAlignment(Element.ALIGN_CENTER);
+            must_attempt_analysis.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            must_attempt_analysis.setBorderColor(new BaseColor(0, 0, 128));
+            must_attempt_analysis.setPaddingBottom(3);
+            mustAttemptImage_table .addCell(must_attempt_analysis);
+            
+            section_interpretion_3.add(mustAttemptImage_table );
+            section_interpretion_3.add(new Paragraph("\n"));
+            //document.add(mustAttemptHeading);
+
+            // Add the 5 Must Attempt Questions image
+            Image mustAttemptAnalysisImage = Image.getInstance(mustAttemptAnalysisBytes);
+            //mustAttemptAnalysisImage.setAbsolutePosition(36, 300); // Positioning the image on the page
+            mustAttemptAnalysisImage.scaleToFit(500, 300);
+            section_interpretion_3.add(mustAttemptAnalysisImage);
+            section_interpretion_3.add(new Paragraph("\n"));
+            //document.add(mustAttemptAnalysisImage);
+            
+            document.add(chapter_iterpretion);
+
+            // Close the document
+            document.close();
+            //System.out.println("PDF Created");
+
+        } catch (IOException | com.itextpdf.text.DocumentException e) {
+            e.printStackTrace();
+        }
 	}
 	
 	private static XSSFColor blackColor;
@@ -808,25 +1736,7 @@ public class Generating_Report {
 		            excelPath
 		    );
 	}
-//	private static String getDesktopPath() {
-//        // Check for OneDrive path
-//        String oneDrivePath = System.getenv("OneDrive");
-//        if (oneDrivePath != null && !oneDrivePath.isEmpty()) {
-//            Path desktopPath = Paths.get(oneDrivePath, "Desktop");
-//            if (Files.exists(desktopPath)) {
-//                return desktopPath.toString();
-//            }
-//        }
-//        String userHome = System.getProperty("user.home");
-//        Path defaultDesktopPath;
-//
-//        // Windows default desktop path
-//        defaultDesktopPath = Paths.get(userHome, "Desktop");
-//        if (Files.exists(defaultDesktopPath)) {
-//            return defaultDesktopPath.toString();
-//        }
-//        return userHome;
-//    }
+
 	private static String getDesktopPath() {
 	    String userHome = System.getProperty("user.home");
 	    Path defaultDesktopPath = Paths.get(userHome, "Desktop");
@@ -920,16 +1830,6 @@ public class Generating_Report {
 	        }
 	        //System.out.println("not the heading problem");
 	        int pageStartRow=0;
-
-			
-			//String btest_name = (String) BTest_data.get("test_name");
-			//BTest_Name=btest_name;
-//            String timestamp = (String) BTest_data.get("time_stamp");
-//            DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss 'GMT'");
-//            DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-//            LocalDateTime dateTime = LocalDateTime.parse(timestamp, inputFormatter);
-//            //String test_date = dateTime.format(outputFormatter);
-//            String test_date=(String) BTest_data.get("test_date");
             List<Map<String, Object>> subjectsList = (List<Map<String, Object>>) BTest_data.get("subjects");
            
             mergeAndSetCellValue(outputsheet, 2, 2, 0, 9, currdata.get("student_roll_no") + " - " + currdata.get("name"), styleMainHeading);

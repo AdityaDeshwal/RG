@@ -115,7 +115,7 @@ public class ConvertFormat{
 		            for (int q_no = 1 + qs_till_now; q_no <= (int) ((Double) q_type.get("num_of_qs") + qs_till_now); q_no++) {
 		                for (String set_no : possible_set_nums) {
 		                    String q_id = createQId(test_code, set_no, subject_name, q_no);
-		                    q_info_arr.add(Arrays.asList(q_id, test_code, set_no, subject_name, q_no, "", q_type_name));
+		                    q_info_arr.add(Arrays.asList(q_id, test_code, set_no, subject_name, q_no, "", q_type_name,isbest5));
 		                }
 
 		                for (int row = 2; row < maxrow; row++) {/*leaving top 2 rows as they contain the name of the columns and not information*/
