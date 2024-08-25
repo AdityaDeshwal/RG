@@ -149,7 +149,8 @@ public class Generating_Report {
 	private static String BTest_Name=(String) BTest_data.get("test_name");;
 	private static String folderFilePath="";
 	private static ProcessBuilder processBuilder;
-	private static Double total_marks_per_80=0.0;
+	private static double total_marks_per_80=0.0;
+	//private static Map<String, Double> totalMarksPer80Map = new HashMap<>();
 //    for (Double value : percentiles.values()) {
 //        total_marks_per_80+= value;
 //    }
@@ -194,7 +195,7 @@ public class Generating_Report {
 	                                joinedData.put("q_type", q.get(6));
 	                                joinedData.put("set_no", q.get(2));
 	                                joinedData.put("q_no", q.get(4));
-//	                                joinedData.put("is_best5", q.get(7));
+	                                joinedData.put("is_best5", q.get(7));
 //	                                System.out.println(q.get(7));
 	                            });
 
@@ -358,9 +359,9 @@ public class Generating_Report {
 	                                Collectors.toList(),
 	                                list -> {
 	                                    int totalQs = list.size();
-//	                                    boolean isBest5 = list.stream().anyMatch(entry -> Boolean.TRUE.equals(entry.get("is_best5")));
-//	                                    //System.out.println(isBest5);
-//	                                    if(isBest5)totalQs=5;
+	                                    boolean isBest5 = list.stream().anyMatch(entry -> Boolean.TRUE.equals(entry.get("is_best5")));
+	                                    //System.out.println(isBest5);
+	                                    if(isBest5)totalQs=5;
 	                                    long correctCount = list.stream().filter(entry -> entry.get("correctness").equals("CORRECT")).count();
 	                                    long incorrectCount = list.stream().filter(entry -> entry.get("correctness").equals("NOT CORRECT")).count();
 	                                    long attemptedCount = list.stream().filter(entry -> !entry.get("correctness").equals("NOT ANSWERED")).count();
@@ -737,7 +738,7 @@ public class Generating_Report {
 	public static void directPdf(Integer ind) { 
 		Map<String, Object> currdata=finalOutput.get(ind);
 
-		String pdfFilePath=folderFilePath + "\\" + currdata.get("student_roll_no") + "_" + BTest_Name + ".pdf";
+		String pdfFilePath=folderFilePath + "\\" + currdata.get("student_roll_no") + ".pdf";
 		
 		Random random = new Random();
 		List<String> currQuotes=new ArrayList<>(quotes);
@@ -1028,7 +1029,7 @@ public class Generating_Report {
                 table.addCell(cell);
             }
             
-            double sum_of_averages = averages.values().stream().mapToDouble(Double::doubleValue).sum();
+            double sum_of_averages = averages.values().stream().mapToDouble(Double::doubleValue).sum(); 
             cell = new PdfPCell(new Phrase("Total", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, BaseColor.BLACK)));
             cell.setHorizontalAlignment(Element.ALIGN_CENTER);
             cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
@@ -2464,6 +2465,20 @@ public class Generating_Report {
                         Collectors.averagingDouble(e -> (Double) e.get(subject + "_total_marks"))
                 ));
     }
+//    public static Map<String, Double> calculateAverages(Map<String, Map<String, Object>> t2, String subject) {
+//        return t2.values().stream()
+//                .filter(aggregatedData -> aggregatedData.containsKey(subject + "_total_marks"))
+//                .collect(Collectors.groupingBy(
+//                    e -> (String) e.get("set_no"),  // Group by set_no
+//                    Collectors.averagingDouble(e -> (Double) e.get(subject + "_total_marks"))
+//                ))
+//                .entrySet().stream()
+//                .collect(Collectors.toMap(
+//                    entry -> "avg_" + subject + "_" + entry.getKey(),  // Create the key as "avg_subject_set_no"
+//                    Map.Entry::getValue  // Get the calculated average value
+//                ));
+//    }
+
     public static Map<String, Double> calculateNegativeAverages(Map<String, Map<String, Object>> t2, String subject) {
         return t2.values().stream()
                 .filter(aggregatedData -> aggregatedData.containsKey(subject + "_negative_marks"))
@@ -2472,6 +2487,20 @@ public class Generating_Report {
                         Collectors.averagingDouble(e -> (Double) e.get(subject + "_negative_marks"))
                 ));
     }
+//    public static Map<String, Double> calculateNegativeAverages(Map<String, Map<String, Object>> t2, String subject) {
+//        return t2.values().stream()
+//                .filter(aggregatedData -> aggregatedData.containsKey(subject + "_negative_marks"))
+//                .collect(Collectors.groupingBy(
+//                    e -> (String) e.get("set_no"),  // Group by set_no
+//                    Collectors.averagingDouble(e -> (Double) e.get(subject + "_negative_marks"))
+//                ))
+//                .entrySet().stream()
+//                .collect(Collectors.toMap(
+//                    entry -> "avg_neg_" + subject + "_" + entry.getKey(),  // Create the key as "avg_neg_subject_set_no"
+//                    Map.Entry::getValue  // Get the calculated average value
+//                ));
+//    }
+
     public static Map<String, Double> calculatePercentiles(Map<String, Map<String, Object>> t2, String subject, double percentile) {
         List<Double> marks = t2.values().stream()
                 .filter(aggregatedData -> aggregatedData.containsKey(subject + "_total_marks"))
@@ -2487,6 +2516,42 @@ public class Generating_Report {
         result.put(subject + "_80th_percentile", percentileValue);
         return result;
     }
+//    public static Map<String, Double> calculatePercentiles(Map<String, Map<String, Object>> t2, String subject, double percentile) {
+//        Map<String, Double> percentiles = t2.values().stream()
+//                .filter(aggregatedData -> aggregatedData.containsKey(subject + "_total_marks"))
+//                .collect(Collectors.groupingBy(
+//                    e -> (String) e.get("set_no"),  // Group by set_no
+//                    Collectors.mapping(
+//                        e -> (Double) e.get(subject + "_total_marks"),
+//                        Collectors.collectingAndThen(
+//                            Collectors.toList(),
+//                            marks -> {
+//                                // Sort the marks to calculate the percentile
+//                                Collections.sort(marks);
+//                                int index = (int) Math.ceil(percentile * marks.size()) - 1;
+//                                return marks.get(index);
+//                            }
+//                        )
+//                    )
+//                ))
+//                .entrySet().stream()
+//                .collect(Collectors.toMap(
+//                    entry -> {
+//                        String setNo = entry.getKey();
+//                        double percentileValue = entry.getValue();
+//
+//                        // Add to the total marks per 80th percentile for the specific set_no
+//                        totalMarksPer80Map.merge(setNo, percentileValue, Double::sum);
+//
+//                        return subject + "_80th_percentile_" + setNo;  // Create the key as "subject_80th_percentile_set_no"
+//                    },
+//                    Map.Entry::getValue  // Get the calculated percentile value
+//                ));
+//
+//        return percentiles;
+//    }
+
+
     private static Map<String, Double> initializeStats() {
         Map<String, Double> stats = new HashMap<>();
         stats.put("total", 0.0);

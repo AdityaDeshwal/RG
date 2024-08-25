@@ -109,7 +109,13 @@ public class ConvertFormat{
 		        List<Map<String, Object>> q_types = (List<Map<String, Object>>) subj.get("q_types");
 		        for (Map<String, Object> q_type : q_types) {
 		            String q_type_name = (String) q_type.get("q_type_name");
-		            boolean isbest5 = "true".equals(q_type.get("is_best5"));
+		            boolean isbest5=false;
+		            if(q_type.get("is_best5") instanceof String) {
+		            	if(q_type.get("is_best5").equals("true") || q_type.get("is_best5").equals("True") || q_type.get("is_best5").equals("TRUE")) {
+		            		isbest5=true;
+		            	}
+		            }
+		            else isbest5=(boolean) q_type.get("is_best5");
 		            int best5start = 1 + qs_till_now;
 		            //System.out.println("error in 1st only");
 		            for (int q_no = 1 + qs_till_now; q_no <= (int) ((Double) q_type.get("num_of_qs") + qs_till_now); q_no++) {
@@ -137,11 +143,12 @@ public class ConvertFormat{
 		                    else if (info_range[row][col + 5].equals(1.0)) correctness = "PARTIALLY CORRECT";
 
 		                    if (isbest5) {
+		                    	//System.out.println(isbest5);
 		                        if (q_no == best5start) {
 		                            best5qs.put(roll_no, new ArrayList<>());
 		                        }
 		                        if (best5qs.get(roll_no).size() >= 5) {
-		                            marks = 0;
+		                            marks = 0.0;
 		                            correctness = "NOT ANSWERED";
 		                        } else if (!"NOT ANSWERED".equals(correctness)) {
 		                            best5qs.get(roll_no).add(q_no);
